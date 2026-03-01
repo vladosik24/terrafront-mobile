@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Survival 3D</title>
+<style>
+    body { margin:0; overflow:hidden; }
+    canvas { display:block; }
+    #info {
+        position:absolute;
+        top:10px;
+        left:10px;
+        color:white;
+        font-family:Arial;
+        z-index:10;
+    }
+</style>
+</head>
+<body>
+<div id="info">Tap screen to look • Use on-screen joystick later</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+let camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth/window.innerHeight,
+    0.1,
+    1000
+);
+
+let renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Світло
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(100,100,50);
+scene.add(light);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+// Генерація terrain
+let size = 200;
+let segments = 200;
+
+let geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+geometry.rotateX(-Math.PI / 2);
+
+for (let i = 0; i < geometry.attributes.position.count; i++) {
+    let y = Math.random() * 2; // висота
+    geometry.attributes.position.setY(i, y);
+}
+
+geometry.computeVertexNormals();
+
+let material = new THREE.MeshStandardMaterial({
+    color: 0x228b22,
+    flatShading: false
+});
+
+let terrain = new THREE.Mesh(geometry, material);
+scene.add(terrain);
+
+// Позиція гравця
+camera.position.set(0, 5, 10);
+
+// Простий рух
+let velocity = {x:0, z:0};
+let speed = 0.2;
+
+window.addEventListener("keydown", (e)=>{
+    if(e.key==="w") velocity.z = -speed;
+    if(e.key==="s") velocity.z = speed;
+    if(e.key==="a") velocity.x = -speed;
+    if(e.key==="d") velocity.x = speed;
+});
+
+window.addEventListener("keyup", ()=>{
+    velocity.x = 0;
+    velocity.z = 0;
+});
+
+// Рух мишкою
+let isTouching = false;
+let lastX = 0;
+
+window.addEventListener("touchstart", (e)=>{
+    isTouching = true;
+    lastX = e.touches[0].clientX;
+});
+
+window.addEventListener("touchmove", (e)=>{
+    if(!isTouching) return;
+    let delta = e.touches[0].clientX - lastX;
+    camera.rotation.y -= delta * 0.005;
+    lastX = e.touches[0].clientX;
+});
+
+window.addEventListener("touchend", ()=>{
+    isTouching = false;
+});
+
+function animate(){
+    requestAnimationFrame(animate);
+
+    camera.position.x += velocity.x;
+    camera.position.z += velocity.z;
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener("resize", ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
