@@ -2,28 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Survival 3D</title>
+<title>Terrafront Mobile</title>
 <style>
-    body { margin:0; overflow:hidden; }
+    body { margin:0; overflow:hidden; background:#000; }
     canvas { display:block; }
-    #info {
+    #ui {
         position:absolute;
-        top:10px;
-        left:10px;
-        color:white;
+        top:20px;
+        left:20px;
+        color:#ffffffcc;
         font-family:Arial;
-        z-index:10;
+        font-size:14px;
+        letter-spacing:1px;
     }
 </style>
 </head>
 <body>
-<div id="info">Tap screen to look • Use on-screen joystick later</div>
+
+<div id="ui">
+Terrafront • Survival Prototype<br>
+Swipe to look • Tap with 2 fingers to move
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
 <script>
 let scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
+
+// 🌅 Атмосферне небо
+scene.fog = new THREE.Fog(0x87a8c4, 20, 120);
+scene.background = new THREE.Color(0x87a8c4);
 
 let camera = new THREE.PerspectiveCamera(
     75,
@@ -34,81 +42,99 @@ let camera = new THREE.PerspectiveCamera(
 
 let renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// Світло
-let light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(100,100,50);
-scene.add(light);
+// ☀ Сонце
+let sun = new THREE.DirectionalLight(0xfff2cc, 1.2);
+sun.position.set(50,100,30);
+sun.castShadow = true;
+scene.add(sun);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+// 🌤 М’яке освітлення
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
 
-// Генерація terrain
-let size = 200;
+// 🌍 Terrain
+let size = 300;
 let segments = 200;
 
 let geometry = new THREE.PlaneGeometry(size, size, segments, segments);
-geometry.rotateX(-Math.PI / 2);
+geometry.rotateX(-Math.PI/2);
 
 for (let i = 0; i < geometry.attributes.position.count; i++) {
-    let y = Math.random() * 2; // висота
-    geometry.attributes.position.setY(i, y);
+    let x = geometry.attributes.position.getX(i);
+    let z = geometry.attributes.position.getZ(i);
+
+    let height =
+        Math.sin(x * 0.05) * 2 +
+        Math.cos(z * 0.05) * 2 +
+        Math.random() * 0.5;
+
+    geometry.attributes.position.setY(i, height);
 }
 
 geometry.computeVertexNormals();
 
 let material = new THREE.MeshStandardMaterial({
-    color: 0x228b22,
-    flatShading: false
+    color: 0x3b7d3b,
+    roughness: 1,
+    metalness: 0
 });
 
 let terrain = new THREE.Mesh(geometry, material);
+terrain.receiveShadow = true;
 scene.add(terrain);
 
-// Позиція гравця
-camera.position.set(0, 5, 10);
+// 🎥 Камера
+camera.position.set(0, 8, 20);
 
-// Простий рух
 let velocity = {x:0, z:0};
-let speed = 0.2;
+let speed = 0.4;
+let moving = false;
 
-window.addEventListener("keydown", (e)=>{
-    if(e.key==="w") velocity.z = -speed;
-    if(e.key==="s") velocity.z = speed;
-    if(e.key==="a") velocity.x = -speed;
-    if(e.key==="d") velocity.x = speed;
-});
-
-window.addEventListener("keyup", ()=>{
-    velocity.x = 0;
-    velocity.z = 0;
-});
-
-// Рух мишкою
-let isTouching = false;
-let lastX = 0;
-
+// Рух двома пальцями
 window.addEventListener("touchstart", (e)=>{
-    isTouching = true;
-    lastX = e.touches[0].clientX;
-});
-
-window.addEventListener("touchmove", (e)=>{
-    if(!isTouching) return;
-    let delta = e.touches[0].clientX - lastX;
-    camera.rotation.y -= delta * 0.005;
-    lastX = e.touches[0].clientX;
+    if(e.touches.length === 2){
+        moving = true;
+    }
 });
 
 window.addEventListener("touchend", ()=>{
-    isTouching = false;
+    moving = false;
 });
 
+// Поворот одним пальцем
+let lastX = 0;
+let rotating = false;
+
+window.addEventListener("touchstart", (e)=>{
+    if(e.touches.length === 1){
+        rotating = true;
+        lastX = e.touches[0].clientX;
+    }
+});
+
+window.addEventListener("touchmove", (e)=>{
+    if(rotating && e.touches.length === 1){
+        let delta = e.touches[0].clientX - lastX;
+        camera.rotation.y -= delta * 0.005;
+        lastX = e.touches[0].clientX;
+    }
+});
+
+window.addEventListener("touchend", ()=>{
+    rotating = false;
+});
+
+// Анімація
 function animate(){
     requestAnimationFrame(animate);
 
-    camera.position.x += velocity.x;
-    camera.position.z += velocity.z;
+    if(moving){
+        camera.position.x -= Math.sin(camera.rotation.y) * speed;
+        camera.position.z -= Math.cos(camera.rotation.y) * speed;
+    }
 
     renderer.render(scene, camera);
 }
@@ -121,5 +147,6 @@ window.addEventListener("resize", ()=>{
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
+
 </body>
 </html>
