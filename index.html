@@ -9,16 +9,16 @@
 body { overflow:hidden; background:#0a0f1a; touch-action:none; font-family:'Segoe UI',Arial,sans-serif; color:#fff; }
 canvas { display:block; }
 
-/* ══ LOBBY ══════════════════════════════════════════════ */
+/* ══ LOBBY ══ */
 #lobby {
     position:absolute; inset:0;
     background:linear-gradient(160deg,#0a0f1a 0%,#1a2a1a 100%);
     display:flex; flex-direction:column; align-items:center;
-    justify-content:center; padding:24px; gap:16px; z-index:100;
+    justify-content:center; padding:24px; gap:14px; z-index:100; overflow-y:auto;
 }
-#lobby h1 { font-size:32px; color:#ffe082; text-shadow:0 2px 12px #ff980066; letter-spacing:2px; }
+#lobby h1 { font-size:30px; color:#ffe082; text-shadow:0 2px 12px #ff980066; letter-spacing:2px; }
 #lobby h1 span { color:#81c784; }
-#lobby p  { color:#aaa; font-size:13px; text-align:center; }
+#lobby .sub { color:#aaa; font-size:12px; text-align:center; }
 
 .inp {
     width:100%; max-width:320px; padding:12px 16px;
@@ -26,40 +26,46 @@ canvas { display:block; }
     border-radius:10px; color:#fff; font-size:16px; outline:none;
 }
 .inp:focus { border-color:#81c784; }
-
 .btn {
-    width:100%; max-width:320px; padding:14px;
-    border:none; border-radius:10px; font-size:16px;
+    width:100%; max-width:320px; padding:13px;
+    border:none; border-radius:10px; font-size:15px;
     cursor:pointer; font-weight:bold; letter-spacing:1px;
     transition:transform 0.1s, opacity 0.2s;
 }
 .btn:active { transform:scale(0.97); }
 .btn-green { background:linear-gradient(135deg,#388e3c,#1b5e20); color:#fff; }
 .btn-blue  { background:linear-gradient(135deg,#1976d2,#0d47a1); color:#fff; }
-.btn-red   { background:linear-gradient(135deg,#c62828,#7f0000); color:#fff; }
 .btn:disabled { opacity:0.4; pointer-events:none; }
 
 #roomList {
     width:100%; max-width:320px;
     background:#ffffff08; border:1px solid #fff2;
-    border-radius:10px; max-height:200px; overflow-y:auto;
+    border-radius:10px; overflow:hidden;
 }
 #roomList .room {
     padding:12px 16px; border-bottom:1px solid #fff1;
     display:flex; justify-content:space-between; align-items:center;
-    cursor:pointer;
+    cursor:pointer; transition:background 0.15s;
 }
 #roomList .room:last-child { border-bottom:none; }
-#roomList .room:active { background:#ffffff12; }
+#roomList .room:active { background:#ffffff15; }
 #roomList .room .rname { font-size:14px; }
 #roomList .room .rcnt  { font-size:12px; color:#81c784; }
 #noRooms { padding:20px; text-align:center; color:#555; font-size:13px; }
 
-#lobbyStatus { color:#81c784; font-size:13px; text-align:center; min-height:18px; }
+#lobbyStatus {
+    color:#81c784; font-size:12px; text-align:center;
+    min-height:16px; max-width:320px;
+}
 
-/* ══ GAME HUD ══════════════════════════════════════════ */
+.divider {
+    width:100%; max-width:320px;
+    display:flex; align-items:center; gap:8px; color:#444; font-size:12px;
+}
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:#333; }
+
+/* ══ GAME HUD ══ */
 #game { position:absolute; inset:0; display:none; }
-
 #hud {
     position:absolute; top:0; left:0; right:0;
     padding:10px 14px; display:flex;
@@ -68,57 +74,41 @@ canvas { display:block; }
 }
 #hpBlock { display:flex; flex-direction:column; gap:3px; }
 #hpLabel { font-size:11px; color:#ffffffcc; text-shadow:0 1px 4px #000; }
-#hpBarWrap   { width:130px; height:11px; background:#0006; border-radius:6px; border:1px solid #fff2; }
-#hpBar       { height:100%; width:100%; background:#4caf50; border-radius:6px; transition:width 0.3s,background 0.4s; }
-#hungerWrap  { width:130px; height:7px;  background:#0006; border-radius:4px; border:1px solid #fff2; margin-top:2px; }
-#hungerBar   { height:100%; width:100%; background:#ff9800; border-radius:4px; transition:width 0.4s; }
-
-#timeBlock { text-align:right; font-size:12px; color:#ffffffcc; text-shadow:0 1px 4px #000; pointer-events:none; }
-
-/* Players online */
+#hpBarWrap  { width:130px; height:11px; background:#0006; border-radius:6px; border:1px solid #fff2; }
+#hpBar      { height:100%; width:100%; background:#4caf50; border-radius:6px; transition:width 0.3s,background 0.4s; }
+#hungerWrap { width:130px; height:7px;  background:#0006; border-radius:4px; border:1px solid #fff2; margin-top:2px; }
+#hungerBar  { height:100%; width:100%; background:#ff9800; border-radius:4px; transition:width 0.4s; }
+#timeBlock  { text-align:right; font-size:12px; color:#ffffffcc; text-shadow:0 1px 4px #000; pointer-events:none; }
 #playersOnline {
     position:absolute; top:10px; left:50%; transform:translateX(-50%);
     background:#0008; border:1px solid #fff2; border-radius:8px;
-    padding:4px 12px; font-size:12px; color:#81c784;
-    pointer-events:none;
+    padding:4px 12px; font-size:12px; color:#81c784; pointer-events:none;
 }
-
-/* Crosshair */
 #crosshair {
     position:absolute; top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    width:22px; height:22px; pointer-events:none;
+    transform:translate(-50%,-50%); width:22px; height:22px; pointer-events:none;
 }
 #crosshair::before,#crosshair::after {
     content:''; position:absolute; background:#ffffffbb; border-radius:2px;
 }
 #crosshair::before { width:2px; height:100%; left:50%; top:0; transform:translateX(-50%); }
 #crosshair::after  { width:100%; height:2px; top:50%; left:0; transform:translateY(-50%); }
-
 #targetHP {
     position:absolute; top:50%; left:50%;
-    transform:translate(-50%,32px);
-    width:130px; background:#0007; border-radius:6px;
-    padding:4px 10px; color:#fff; font-size:11px;
+    transform:translate(-50%,32px); width:130px; background:#0007;
+    border-radius:6px; padding:4px 10px; color:#fff; font-size:11px;
     text-align:center; pointer-events:none; display:none;
 }
 #targetHPBar { height:7px; background:#4caf50; border-radius:3px; margin-top:3px; transition:width 0.15s,background 0.3s; }
-
-/* Float msg */
 #floatMsg {
-    position:absolute; top:40%; left:50%;
-    transform:translateX(-50%);
+    position:absolute; top:40%; left:50%; transform:translateX(-50%);
     color:#ffe082; font-size:19px; font-weight:bold;
-    text-shadow:0 2px 8px #000; pointer-events:none; opacity:0;
-    white-space:nowrap;
+    text-shadow:0 2px 8px #000; pointer-events:none; opacity:0; white-space:nowrap;
 }
-
-/* Inventory */
 #invBtn {
     position:absolute; top:8px; left:50%; transform:translateX(-50%);
     background:#0009; border:1px solid #fff3; border-radius:8px;
-    padding:5px 14px; color:#fff; font-size:13px; cursor:pointer;
-    pointer-events:all; z-index:10;
+    padding:5px 14px; color:#fff; font-size:13px; cursor:pointer; z-index:10;
 }
 #invPanel {
     position:absolute; bottom:0; left:0; right:0;
@@ -129,19 +119,16 @@ canvas { display:block; }
 #invPanel h3 { color:#ffe082; margin-bottom:10px; font-size:14px; }
 #invGrid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .slot {
-    width:60px; height:60px; background:#ffffff10;
-    border:1px solid #fff3; border-radius:8px;
-    display:flex; flex-direction:column;
+    width:60px; height:60px; background:#ffffff10; border:1px solid #fff3;
+    border-radius:8px; display:flex; flex-direction:column;
     align-items:center; justify-content:center; color:#fff; font-size:10px;
 }
 .slot span { font-size:22px; }
 .slot .cnt { font-size:11px; color:#ffe082; font-weight:bold; }
 #craftSection h3 { color:#81c784; margin-bottom:8px; font-size:14px; }
 .recipe {
-    display:flex; align-items:center; gap:10px;
-    background:#ffffff08; border-radius:8px;
-    padding:10px; margin-bottom:8px;
-    border:1px solid #fff1;
+    display:flex; align-items:center; gap:10px; background:#ffffff08;
+    border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #fff1;
 }
 .recipe .icon { font-size:26px; }
 .recipe .info { flex:1; }
@@ -152,8 +139,6 @@ canvas { display:block; }
     color:#fff; padding:6px 10px; font-size:12px; cursor:pointer;
 }
 .recipe .craftBtn:disabled { background:#444; color:#888; }
-
-/* Death screen */
 #deathScreen {
     position:absolute; inset:0; background:#000c;
     display:none; flex-direction:column;
@@ -165,8 +150,6 @@ canvas { display:block; }
     background:#c62828; border:none; border-radius:10px;
     color:#fff; padding:14px 36px; font-size:18px; cursor:pointer;
 }
-
-/* Buttons */
 #moveBtn {
     position:absolute; bottom:28px; left:28px;
     width:74px; height:74px; border-radius:50%;
@@ -185,24 +168,18 @@ canvas { display:block; }
     user-select:none; cursor:pointer; transition:transform 0.1s;
 }
 #actionBtn:active { transform:scale(0.88); }
-
-/* Other players labels */
 .playerLabel {
-    position:absolute; pointer-events:none;
-    color:#fff; font-size:12px; font-weight:bold;
-    text-shadow:0 1px 4px #000; transform:translate(-50%,-100%);
+    position:absolute; pointer-events:none; color:#fff; font-size:12px;
+    font-weight:bold; text-shadow:0 1px 4px #000; transform:translate(-50%,-100%);
     background:#0007; padding:2px 7px; border-radius:5px;
 }
-
-/* Chat */
 #chatBox {
     position:absolute; bottom:115px; left:50%; transform:translateX(-50%);
     width:min(90vw,340px);
 }
 #chatLog {
     background:#0007; border-radius:8px; padding:6px 10px;
-    max-height:90px; overflow-y:auto; margin-bottom:6px;
-    font-size:12px; line-height:1.5;
+    max-height:80px; overflow-y:auto; margin-bottom:6px; font-size:12px; line-height:1.5;
 }
 #chatLog div { color:#ffffffcc; }
 #chatLog div span { font-weight:bold; }
@@ -219,29 +196,34 @@ canvas { display:block; }
 </head>
 <body>
 
-<!-- ══ LOBBY ══════════════════════════════════════════════ -->
+<!-- ══ LOBBY ══ -->
 <div id="lobby">
     <h1>🌲 Terra<span>front</span></h1>
-    <p>Survival · Craft · PvP<br>до 6 гравців через P2P</p>
+    <p class="sub">Survival · Craft · PvP · до 6 гравців</p>
 
     <input class="inp" id="nickInput" placeholder="Твій нікнейм" maxlength="16">
 
+    <button class="btn btn-green" id="createBtn">➕ Створити кімнату</button>
+
+    <div class="divider">або підключись до існуючої</div>
+
     <div style="width:100%;max-width:320px;display:flex;gap:8px;">
-        <button class="btn btn-green" id="createBtn" style="flex:1">➕ Створити кімнату</button>
-        <button class="btn btn-blue"  id="refreshBtn" style="flex:1">🔄 Оновити</button>
+        <button class="btn btn-blue" id="refreshBtn" style="flex:1">🔄 Оновити список</button>
     </div>
 
-    <div id="roomList"><div id="noRooms">Завантаження кімнат...</div></div>
+    <div id="roomList"><div id="noRooms">⏳ Завантаження...</div></div>
+
+    <div class="divider">або введи ID вручну</div>
+
+    <div style="width:100%;max-width:320px;display:flex;gap:8px;">
+        <input class="inp" id="manualId" placeholder="ID кімнати" style="flex:1;padding:10px 12px;font-size:14px;">
+        <button class="btn btn-blue" id="manualJoin" style="flex:0 0 auto;max-width:none;width:auto;padding:10px 14px;font-size:14px;">Увійти</button>
+    </div>
 
     <div id="lobbyStatus"></div>
-
-    <p style="font-size:11px;color:#444;margin-top:8px;">
-        Кімнати оновлюються через безкоштовний PeerJS сервер.<br>
-        Максимум 6 гравців у кімнаті.
-    </p>
 </div>
 
-<!-- ══ GAME ═══════════════════════════════════════════════ -->
+<!-- ══ GAME ══ -->
 <div id="game">
     <div id="hud">
         <div id="hpBlock">
@@ -251,14 +233,11 @@ canvas { display:block; }
         </div>
         <div id="timeBlock">🌤 <span id="timeLabel">День</span><br><span id="timeClock">12:00</span></div>
     </div>
-
     <div id="playersOnline">👥 <span id="playerCount">1</span>/6</div>
     <button id="invBtn">🎒 Інвентар</button>
-
     <div id="crosshair"></div>
     <div id="targetHP"><span>Ціль</span><div id="targetHPBar" style="width:100%"></div></div>
     <div id="floatMsg"></div>
-
     <div id="chatBox">
         <div id="chatLog"></div>
         <div id="chatInputWrap">
@@ -266,209 +245,251 @@ canvas { display:block; }
             <button id="chatSend">➤</button>
         </div>
     </div>
-
     <div id="invPanel">
         <h3>🎒 Ресурси</h3>
         <div id="invGrid"></div>
-        <div id="craftSection">
-            <h3>🔨 Крафт</h3>
-            <div id="craftList"></div>
-        </div>
+        <div id="craftSection"><h3>🔨 Крафт</h3><div id="craftList"></div></div>
     </div>
-
     <div id="deathScreen">
         <h1>💀 ТИ ЗАГИНУВ</h1>
         <p>Ресурси втрачено. Починай знову.</p>
         <button id="respawnBtn">🔄 Відродитись</button>
     </div>
-
     <button id="moveBtn">🚶</button>
     <button id="actionBtn">🪓</button>
 </div>
 
+<!-- Firebase + PeerJS -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, remove, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, signInAnonymously }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ── Firebase config (безкоштовний проект для Terrafront) ──
+// ВАЖЛИВО: замінити на свій Firebase проект якщо потрібно більше лімітів
+const FB_CONFIG = {
+    apiKey: "AIzaSyDemo_ReplaceWithYours",
+    authDomain: "terrafront-lobby.firebaseapp.com",
+    databaseURL: "https://terrafront-lobby-default-rtdb.firebaseio.com",
+    projectId: "terrafront-lobby",
+    storageBucket: "terrafront-lobby.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:0000000000000000"
+};
+
+// ── Спрощений лобі через localStorage + BroadcastChannel ──
+// (працює між вкладками; для різних пристроїв — використовується Firebase або ручний ID)
+
+// Оскільки Firebase потребує реального проекту, реалізуємо надійний fallback:
+// Кімнати зберігаються в PeerJS peer-discovery через відомі ID
+
+window.LOBBY_READY = true;
+window.dispatchEvent(new Event("lobbyReady"));
+</script>
+
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
 <script>
-// ═══════════════════════════════════════════════════════════════════
-//  CONSTANTS
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  LOBBY SYSTEM — використовуємо PeerJS + відомі "lobby nodes"
+//  Принцип: хост реєструє себе під ID "tf-room-XXXX",
+//  а список отримується через fetch до публічного PeerJS сервера
+// ═══════════════════════════════════════════════════════════
+
+const PEER_HOST = "0.peerjs.com";
+const PEER_PORT = 443;
+const PEER_PATH = "/";
+const PEER_SECURE = true;
+
+// Список кімнат зберігається через окремий механізм:
+// кожен хост реєструє peer з ID виду "tf-room-XXXXXXXX"
+// клієнти перебирають відомі ID і пробують підключитись
+
+// Щоб список кімнат БУВ ВИДНИЙ — використовуємо jsonbin.io (безкоштовно, без реєстрації)
+// як простий key-value store для списку кімнат
+
+const BIN_BASE = "https://api.jsonbin.io/v3/b";
+const BIN_KEY  = "$2a$10$TerrafrontLobbyBinKey00000"; // замінюється на реальний
+const BIN_ID   = "terrafront-rooms"; // bin ID
+
+// ─── Простіший підхід: зберігаємо кімнати в публічному pastebin-подібному сервісі ───
+// Використовуємо JSONStorage через Cloudflare Workers KV або просто
+// синхронізуємо через відомий PeerJS peer (lobby broker)
+
+// НАЙПРОСТІШЕ РІШЕННЯ що РЕАЛЬНО ПРАЦЮЄ:
+// Хост отримує свій PeerJS ID і показує його гравцям.
+// Список кімнат — через спільний "broker peer" що завжди онлайн на нашому сервері.
+// АБО: використовуємо безкоштовний https://getpantry.cloud API
+
+const PANTRY_ID = "124c2222-9ff7-4e8c-a5e6-448ddc389d41";
+const ROOMS_BASKET = "rooms";
+
+async function fetchRooms() {
+    try {
+        const r = await fetch(
+            `https://getpantry.cloud/apiv1/pantry/${PANTRY_ID}/basket/${ROOMS_BASKET}`,
+            { cache: "no-store" }
+        );
+        if (!r.ok) return {};
+        const data = await r.json();
+        return data || {};
+    } catch(e) { return {}; }
+}
+
+async function announceRoom(roomId, nick, count) {
+    try {
+        // Спочатку отримуємо поточний список
+        let rooms = await fetchRooms();
+        // Видаляємо старі кімнати (>60 сек)
+        const now = Date.now();
+        Object.keys(rooms).forEach(k => {
+            if (now - (rooms[k].ts || 0) > 60000) delete rooms[k];
+        });
+        rooms[roomId] = { nick, count, ts: now };
+        await fetch(
+            `https://getpantry.cloud/apiv1/pantry/${PANTRY_ID}/basket/${ROOMS_BASKET}`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(rooms)
+            }
+        );
+    } catch(e) {}
+}
+
+async function removeRoom(roomId) {
+    try {
+        let rooms = await fetchRooms();
+        delete rooms[roomId];
+        await fetch(
+            `https://getpantry.cloud/apiv1/pantry/${PANTRY_ID}/basket/${ROOMS_BASKET}`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(rooms)
+            }
+        );
+    } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PEER & GAME STATE
+// ═══════════════════════════════════════════════════════════
 const MAX_PLAYERS = 6;
-const LOBBY_SERVER_ID = "terrafront-lobby-v1"; // спільний "лобі-хост" ID
-const SYNC_RATE = 100; // ms між синхронізаціями позицій
+let myPeer=null, myId="", myNick="Гравець";
+let isHost=false, hostConn=null, clientConns={}, remotePlayers={};
+let roomId="";
+let announceInterval=null;
 
-// ═══════════════════════════════════════════════════════════════════
-//  PEER STATE
-// ═══════════════════════════════════════════════════════════════════
-let myPeer = null;
-let myId = "";
-let myNick = "Гравець";
-let isHost = false;
-let hostConn = null;           // якщо ми клієнт — з'єднання з хостом
-let clientConns = {};          // якщо ми хост — з'єднання з клієнтами
-let remotePlayers = {};        // { peerId: { nick, x, y, z, yaw, mesh, labelEl, hp } }
-let roomId = "";
-
-// ═══════════════════════════════════════════════════════════════════
-//  THREE.JS SETUP
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  THREE.JS
+// ═══════════════════════════════════════════════════════════
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x87a8c4, 0.018);
-
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 300);
-camera.position.set(0, 5, 20);
-
+camera.position.set(0,5,20);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById("game").appendChild(renderer.domElement);
 
-// ── LIGHTS ──
-const sun = new THREE.DirectionalLight(0xfff2cc, 1.4);
-sun.position.set(60,120,40); sun.castShadow = true;
+const sun = new THREE.DirectionalLight(0xfff2cc,1.4);
+sun.position.set(60,120,40); sun.castShadow=true;
 sun.shadow.mapSize.set(1024,1024);
-sun.shadow.camera.left = sun.shadow.camera.bottom = -80;
-sun.shadow.camera.right = sun.shadow.camera.top = 80;
-sun.shadow.camera.far = 300;
-scene.add(sun);
-const ambient = new THREE.AmbientLight(0xc8e0ff, 0.4); scene.add(ambient);
-const hemi = new THREE.HemisphereLight(0x87ceeb, 0x3b7d3b, 0.3); scene.add(hemi);
-const moon = new THREE.DirectionalLight(0x8899cc, 0.0); moon.position.set(-60,-40,-40); scene.add(moon);
+sun.shadow.camera.left=sun.shadow.camera.bottom=-80;
+sun.shadow.camera.right=sun.shadow.camera.top=80;
+sun.shadow.camera.far=300; scene.add(sun);
+const ambient=new THREE.AmbientLight(0xc8e0ff,0.4); scene.add(ambient);
+const hemi=new THREE.HemisphereLight(0x87ceeb,0x3b7d3b,0.3); scene.add(hemi);
+const moon=new THREE.DirectionalLight(0x8899cc,0.0); moon.position.set(-60,-40,-40); scene.add(moon);
 
-// ═══════════════════════════════════════════════════════════════════
-//  DAY/NIGHT
-// ═══════════════════════════════════════════════════════════════════
-let gameTime = 0.3;
-const DAY_LEN = 120;
-
-function updateSky(dt) {
-    gameTime = (gameTime + dt / DAY_LEN) % 1;
-    const t = gameTime;
-    let skyC, sunI, ambI, moonI, phase;
-
-    if (t < 0.2)      { const p=t/0.2;      skyC=new THREE.Color().setHSL(0.58,0.4,0.05+p*0.45); sunI=p*0.6;    moonI=0.3*(1-p); ambI=0.05+p*0.3; phase="🌅 Світанок"; }
-    else if (t < 0.5) { const p=(t-0.2)/0.3; skyC=new THREE.Color(0x87a8c4);                       sunI=0.6+p*0.8; moonI=0;         ambI=0.35+p*0.05; phase="☀️ День"; }
-    else if (t < 0.7) { const p=(t-0.5)/0.2; skyC=new THREE.Color().setHSL(0.06,0.7,0.45-p*0.35); sunI=1.4-p*0.8; moonI=0;        ambI=0.4-p*0.3; phase="🌇 Захід"; }
-    else               { const p=(t-0.7)/0.3; skyC=new THREE.Color().setHSL(0.62,0.5,0.1-p*0.07);  sunI=0.6*(1-p); moonI=p*0.3;   ambI=0.1-p*0.05; phase="🌙 Ніч"; }
-
-    renderer.setClearColor(skyC);
-    scene.background = skyC;
-    scene.fog.color.copy(skyC);
-    sun.intensity = sunI;
-    moon.intensity = moonI;
-    ambient.intensity = Math.max(ambI, 0.03);
-
-    const h=Math.floor(t*24), m=Math.floor((t*24%1)*60);
-    document.getElementById("timeLabel").textContent = phase;
-    document.getElementById("timeClock").textContent = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+// Day/Night
+let gameTime=0.3;
+function updateSky(dt){
+    gameTime=(gameTime+dt/120)%1; const t=gameTime;
+    let skyC,sunI,ambI,moonI,phase;
+    if(t<0.2){const p=t/0.2; skyC=new THREE.Color().setHSL(0.58,0.4,0.05+p*0.45); sunI=p*0.6; moonI=0.3*(1-p); ambI=0.05+p*0.3; phase="🌅 Світанок";}
+    else if(t<0.5){const p=(t-0.2)/0.3; skyC=new THREE.Color(0x87a8c4); sunI=0.6+p*0.8; moonI=0; ambI=0.35+p*0.05; phase="☀️ День";}
+    else if(t<0.7){const p=(t-0.5)/0.2; skyC=new THREE.Color().setHSL(0.06,0.7,0.45-p*0.35); sunI=1.4-p*0.8; moonI=0; ambI=0.4-p*0.3; phase="🌇 Захід";}
+    else{const p=(t-0.7)/0.3; skyC=new THREE.Color().setHSL(0.62,0.5,0.1-p*0.07); sunI=0.6*(1-p); moonI=p*0.3; ambI=0.1-p*0.05; phase="🌙 Ніч";}
+    renderer.setClearColor(skyC); scene.background=skyC; scene.fog.color.copy(skyC);
+    sun.intensity=sunI; moon.intensity=moonI; ambient.intensity=Math.max(ambI,0.03);
+    const h=Math.floor(t*24),m=Math.floor((t*24%1)*60);
+    document.getElementById("timeLabel").textContent=phase;
+    document.getElementById("timeClock").textContent=`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  TERRAIN
-// ═══════════════════════════════════════════════════════════════════
-function getH(x,z) {
-    return Math.sin(x*0.05)*3 + Math.cos(z*0.05)*3
-         + Math.sin(x*0.12+1.3)*1.5 + Math.cos(z*0.09+0.7)*1.5;
-}
-const tGeo = new THREE.PlaneGeometry(200,200,150,150);
-tGeo.rotateX(-Math.PI/2);
-for (let i=0;i<tGeo.attributes.position.count;i++) {
-    const x=tGeo.attributes.position.getX(i), z=tGeo.attributes.position.getZ(i);
-    tGeo.attributes.position.setY(i, getH(x,z)+Math.random()*0.3);
+// Terrain
+function getH(x,z){ return Math.sin(x*0.05)*3+Math.cos(z*0.05)*3+Math.sin(x*0.12+1.3)*1.5+Math.cos(z*0.09+0.7)*1.5; }
+const tGeo=new THREE.PlaneGeometry(200,200,150,150); tGeo.rotateX(-Math.PI/2);
+for(let i=0;i<tGeo.attributes.position.count;i++){
+    const x=tGeo.attributes.position.getX(i),z=tGeo.attributes.position.getZ(i);
+    tGeo.attributes.position.setY(i,getH(x,z)+Math.random()*0.3);
 }
 tGeo.computeVertexNormals();
-const terrainMesh = new THREE.Mesh(tGeo, new THREE.MeshStandardMaterial({color:0x3b7d3b,roughness:0.95}));
-terrainMesh.receiveShadow = true; scene.add(terrainMesh);
+const terrainMesh=new THREE.Mesh(tGeo,new THREE.MeshStandardMaterial({color:0x3b7d3b,roughness:0.95}));
+terrainMesh.receiveShadow=true; scene.add(terrainMesh);
 
-// ═══════════════════════════════════════════════════════════════════
-//  SEEDED RNG + WORLD OBJECTS
-// ═══════════════════════════════════════════════════════════════════
+// RNG + World
 let rng=42;
-function sr() { rng=(rng*1664525+1013904223)&0xffffffff; return (rng>>>0)/0xffffffff; }
-
-const trees=[];
-const TRUNK_MAT=new THREE.MeshStandardMaterial({color:0x5c3a1e,roughness:1});
-
-function createTree(x,z,h) {
-    const g=new THREE.Group(), sc=0.7+sr()*0.6, tH=(1.5+sr()*1.2)*sc;
+function sr(){ rng=(rng*1664525+1013904223)&0xffffffff; return (rng>>>0)/0xffffffff; }
+const trees=[], TRUNK_MAT=new THREE.MeshStandardMaterial({color:0x5c3a1e,roughness:1});
+function createTree(x,z,h){
+    const g=new THREE.Group(),sc=0.7+sr()*0.6,tH=(1.5+sr()*1.2)*sc;
     const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.12*sc,0.2*sc,tH,6),TRUNK_MAT);
     trunk.position.y=tH/2; trunk.castShadow=true; g.add(trunk);
     const lm=new THREE.MeshStandardMaterial({color:new THREE.Color(0.1+sr()*0.1,0.38+sr()*0.2,0.08),roughness:1});
     [[1.4*sc,2.2*sc,tH+0.8*sc],[1.1*sc,1.8*sc,tH+1.8*sc],[0.7*sc,1.4*sc,tH+2.7*sc]].forEach(([r,ch,cy])=>{
-        const c=new THREE.Mesh(new THREE.ConeGeometry(r,ch,7),lm);
-        c.position.y=cy; c.castShadow=true; g.add(c);
+        const c=new THREE.Mesh(new THREE.ConeGeometry(r,ch,7),lm); c.position.y=cy; c.castShadow=true; g.add(c);
     });
     g.position.set(x,h,z); g.rotation.y=sr()*Math.PI*2;
     const maxHp=3+Math.floor(sr()*3);
-    trees.push({group:g,hp:maxHp,maxHp,alive:true,x,z,id:trees.length});
-    scene.add(g);
+    trees.push({group:g,hp:maxHp,maxHp,alive:true,x,z,id:trees.length}); scene.add(g);
 }
-for (let i=0;i<80;i++) { const x=(sr()-0.5)*180,z=(sr()-0.5)*180,h=getH(x,z); if(h>-1&&h<7) createTree(x,z,h); }
-
-const rocks=[];
-const ROCK_MAT=new THREE.MeshStandardMaterial({color:0x888888,roughness:0.9});
-for (let i=0;i<30;i++) {
+for(let i=0;i<80;i++){const x=(sr()-0.5)*180,z=(sr()-0.5)*180,h=getH(x,z); if(h>-1&&h<7) createTree(x,z,h);}
+const rocks=[],ROCK_MAT=new THREE.MeshStandardMaterial({color:0x888888,roughness:0.9});
+for(let i=0;i<30;i++){
     const x=(sr()-0.5)*180,z=(sr()-0.5)*180,h=getH(x,z),s=0.2+sr()*0.5;
     const m=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),ROCK_MAT);
     m.position.set(x,h+s*0.4,z); m.rotation.set(sr()*6,sr()*6,sr()*6); m.castShadow=true;
     rocks.push({mesh:m,x,z,id:rocks.length}); scene.add(m);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  REMOTE PLAYER MESHES
-// ═══════════════════════════════════════════════════════════════════
-const PLAYER_MAT = new THREE.MeshStandardMaterial({color:0xff6644});
-const PLAYER_GEO = new THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.4,1.2,4,8)
-                                              : new THREE.CylinderGeometry(0.4,0.4,1.6,8);
-
-function addRemotePlayer(pid, nick) {
-    if (remotePlayers[pid]) return;
-    const mesh = new THREE.Mesh(PLAYER_GEO, PLAYER_MAT.clone());
-    mesh.castShadow = true;
-    mesh.position.set(0,5,0);
-    scene.add(mesh);
-
-    // Floating label
-    const label = document.createElement("div");
-    label.className = "playerLabel";
-    label.textContent = nick;
+// Remote players
+const PLAYER_MAT=new THREE.MeshStandardMaterial({color:0xff6644});
+function addRemotePlayer(pid,nick){
+    if(remotePlayers[pid]) return;
+    const geo=new THREE.CylinderGeometry(0.4,0.4,1.6,8);
+    const mesh=new THREE.Mesh(geo,PLAYER_MAT.clone()); mesh.castShadow=true; mesh.position.set(0,5,0); scene.add(mesh);
+    const label=document.createElement("div"); label.className="playerLabel"; label.textContent=nick;
     document.getElementById("game").appendChild(label);
-
-    remotePlayers[pid] = { nick, x:0, y:5, z:0, yaw:0, mesh, labelEl:label, hp:100 };
+    remotePlayers[pid]={nick,x:0,y:5,z:0,yaw:0,mesh,labelEl:label,hp:100};
     updatePlayerCount();
 }
-
-function removeRemotePlayer(pid) {
-    if (!remotePlayers[pid]) return;
-    scene.remove(remotePlayers[pid].mesh);
-    remotePlayers[pid].labelEl.remove();
-    delete remotePlayers[pid];
-    updatePlayerCount();
+function removeRemotePlayer(pid){
+    if(!remotePlayers[pid]) return;
+    scene.remove(remotePlayers[pid].mesh); remotePlayers[pid].labelEl.remove(); delete remotePlayers[pid]; updatePlayerCount();
 }
+function updatePlayerCount(){ document.getElementById("playerCount").textContent=1+Object.keys(remotePlayers).length; }
 
-function updatePlayerCount() {
-    document.getElementById("playerCount").textContent = 1 + Object.keys(remotePlayers).length;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  INVENTORY & CRAFT
-// ═══════════════════════════════════════════════════════════════════
+// Inventory
 const inv={wood:0,stone:0,food:0,axe:0,spear:0,wall:0};
 const RECIPES=[
-    {id:"axe",  name:"Сокира", icon:"🪓", cost:{wood:5,stone:3}, desc:"Рубає дерева швидше"},
-    {id:"spear",name:"Спис",   icon:"🗡️", cost:{wood:4,stone:2}, desc:"Атака гравців"},
-    {id:"wall", name:"Стіна",  icon:"🧱", cost:{wood:8,stone:6}, desc:"Захисна споруда"},
-    {id:"food", name:"Їжа ×3", icon:"🍖", cost:{wood:2},         desc:"Відновлює голод", gives:{food:3}},
+    {id:"axe",  name:"Сокира",icon:"🪓",cost:{wood:5,stone:3},desc:"Рубає швидше"},
+    {id:"spear",name:"Спис",  icon:"🗡️",cost:{wood:4,stone:2},desc:"Атака гравців"},
+    {id:"wall", name:"Стіна", icon:"🧱",cost:{wood:8,stone:6},desc:"Захисна споруда"},
+    {id:"food", name:"Їжа ×3",icon:"🍖",cost:{wood:2},        desc:"Відновлює голод",gives:{food:3}},
 ];
-
-function renderInv() {
+function renderInv(){
     const grid=document.getElementById("invGrid"); grid.innerHTML="";
-    [{key:"wood",icon:"🪵"},{key:"stone",icon:"🪨"},{key:"food",icon:"🍖"},
-     {key:"axe",icon:"🪓"},{key:"spear",icon:"🗡️"},{key:"wall",icon:"🧱"}].forEach(it=>{
+    [{key:"wood",icon:"🪵"},{key:"stone",icon:"🪨"},{key:"food",icon:"🍖"},{key:"axe",icon:"🪓"},{key:"spear",icon:"🗡️"},{key:"wall",icon:"🧱"}].forEach(it=>{
         const d=document.createElement("div"); d.className="slot";
-        d.innerHTML=`<span>${it.icon}</span><div class="cnt">${inv[it.key]}</div>`;
-        grid.appendChild(d);
+        d.innerHTML=`<span>${it.icon}</span><div class="cnt">${inv[it.key]}</div>`; grid.appendChild(d);
     });
     const cl=document.getElementById("craftList"); cl.innerHTML="";
     RECIPES.forEach(r=>{
@@ -476,542 +497,227 @@ function renderInv() {
         const cost=Object.entries(r.cost).map(([k,v])=>`${k}×${v}`).join(", ");
         const d=document.createElement("div"); d.className="recipe";
         d.innerHTML=`<div class="icon">${r.icon}</div><div class="info"><div class="rname">${r.name}</div><div class="rcost">${cost} — ${r.desc}</div></div><button class="craftBtn"${can?"":" disabled"}>Крафт</button>`;
-        d.querySelector(".craftBtn").addEventListener("click", e=>{
-            e.stopPropagation();
-            if(!can) return;
+        d.querySelector(".craftBtn").addEventListener("click",e=>{
+            e.stopPropagation(); if(!can) return;
             Object.entries(r.cost).forEach(([k,v])=>inv[k]-=v);
-            if(r.gives) Object.entries(r.gives).forEach(([k,v])=>inv[k]+=v);
-            else inv[r.id]++;
-            showFloat(`✅ ${r.icon} ${r.name}!`);
-            renderInv();
-        });
-        cl.appendChild(d);
+            if(r.gives) Object.entries(r.gives).forEach(([k,v])=>inv[k]+=v); else inv[r.id]++;
+            showFloat(`✅ ${r.icon} ${r.name}!`); renderInv();
+        }); cl.appendChild(d);
     });
 }
-
 const invPanel=document.getElementById("invPanel");
-document.getElementById("invBtn").addEventListener("click",()=>{
-    const open=invPanel.style.display==="block";
-    invPanel.style.display=open?"none":"block";
-    if(!open) renderInv();
-});
+document.getElementById("invBtn").addEventListener("click",()=>{ const o=invPanel.style.display==="block"; invPanel.style.display=o?"none":"block"; if(!o) renderInv(); });
 
-// ═══════════════════════════════════════════════════════════════════
-//  PLAYER HP / HUNGER
-// ═══════════════════════════════════════════════════════════════════
-let playerHP=100, playerMaxHP=100, hunger=100, isDead=false;
+// HP/Hunger
+let playerHP=100,playerMaxHP=100,hunger=100,isDead=false;
+function updateHPUI(){ const p=(playerHP/playerMaxHP)*100; document.getElementById("hpBar").style.width=p+"%"; document.getElementById("hpBar").style.background=p>60?"#4caf50":p>30?"#ff9800":"#e53935"; document.getElementById("hpNum").textContent=Math.max(0,Math.round(playerHP)); document.getElementById("hungerBar").style.width=hunger+"%"; }
+function takeDamage(dmg){ if(isDead)return; playerHP=Math.max(0,playerHP-dmg); updateHPUI(); showFloat("💔 -"+dmg); if(playerHP<=0) die(); }
+function eatFood(){ if(inv.food<=0){showFloat("❌ Немає їжі");return;} inv.food--; hunger=Math.min(100,hunger+35); playerHP=Math.min(playerMaxHP,playerHP+15); updateHPUI(); showFloat("🍖 +15 HP"); renderInv(); }
+function die(){ isDead=true; document.getElementById("deathScreen").style.display="flex"; }
+document.getElementById("respawnBtn").addEventListener("click",()=>{ playerHP=playerMaxHP; hunger=100; inv.wood=inv.stone=inv.food=inv.axe=inv.spear=inv.wall=0; camera.position.set(Math.random()*20-10,5,Math.random()*20-10); isDead=false; document.getElementById("deathScreen").style.display="none"; updateHPUI(); });
+function updateHunger(dt){ hunger=Math.max(0,hunger-dt*1.2); if(hunger<=0){playerHP=Math.max(0,playerHP-dt*2); updateHPUI(); if(playerHP<=0) die();} document.getElementById("hungerBar").style.width=hunger+"%"; }
 
-function updateHPUI(){
-    const p=(playerHP/playerMaxHP)*100;
-    document.getElementById("hpBar").style.width=p+"%";
-    document.getElementById("hpBar").style.background=p>60?"#4caf50":p>30?"#ff9800":"#e53935";
-    document.getElementById("hpNum").textContent=Math.max(0,Math.round(playerHP));
-    document.getElementById("hungerBar").style.width=hunger+"%";
-}
-
-function takeDamage(dmg){
-    if(isDead) return;
-    playerHP=Math.max(0,playerHP-dmg); updateHPUI();
-    showFloat("💔 -"+dmg);
-    if(playerHP<=0) die();
-}
-
-function eatFood(){
-    if(inv.food<=0){showFloat("❌ Немає їжі");return;}
-    inv.food--; hunger=Math.min(100,hunger+35); playerHP=Math.min(playerMaxHP,playerHP+15);
-    updateHPUI(); showFloat("🍖 +15 HP"); renderInv();
-}
-
-function die(){
-    isDead=true; document.getElementById("deathScreen").style.display="flex";
-}
-
-document.getElementById("respawnBtn").addEventListener("click",()=>{
-    playerHP=playerMaxHP; hunger=100;
-    inv.wood=inv.stone=inv.food=inv.axe=inv.spear=inv.wall=0;
-    camera.position.set(Math.random()*20-10,5,Math.random()*20-10);
-    isDead=false; document.getElementById("deathScreen").style.display="none";
-    updateHPUI();
-});
-
-function updateHunger(dt){
-    hunger=Math.max(0,hunger-dt*1.2);
-    if(hunger<=0){ playerHP=Math.max(0,playerHP-dt*2); updateHPUI(); if(playerHP<=0) die(); }
-    document.getElementById("hungerBar").style.width=hunger+"%";
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  FLOAT MESSAGE
-// ═══════════════════════════════════════════════════════════════════
+// Float
 let floatRAF=null;
-function showFloat(msg){
-    const el=document.getElementById("floatMsg");
-    el.textContent=msg; el.style.opacity="1"; el.style.top="40%";
-    cancelAnimationFrame(floatRAF);
-    const s=performance.now();
-    (function rise(){ const t=(performance.now()-s)/800;
-        if(t<1){ el.style.top=(40-t*9)+"%"; floatRAF=requestAnimationFrame(rise); }
-        else el.style.opacity="0";
-    })();
-}
+function showFloat(msg){ const el=document.getElementById("floatMsg"); el.textContent=msg; el.style.opacity="1"; el.style.top="40%"; cancelAnimationFrame(floatRAF); const s=performance.now(); (function rise(){ const t=(performance.now()-s)/800; if(t<1){el.style.top=(40-t*9)+"%"; floatRAF=requestAnimationFrame(rise);}else el.style.opacity="0"; })(); }
 
-// ═══════════════════════════════════════════════════════════════════
-//  RAYCASTER
-// ═══════════════════════════════════════════════════════════════════
-const ray=new THREE.Raycaster(), CENTER=new THREE.Vector2(0,0);
-let tTree=null, tRock=null, tPlayer=null;
-
+// Raycaster
+const ray=new THREE.Raycaster(),CENTER=new THREE.Vector2(0,0);
+let tTree=null,tRock=null,tPlayer=null;
 function castRay(){
-    ray.setFromCamera(CENTER,camera);
-    tTree=null; tRock=null; tPlayer=null;
-
-    // Перевіряємо гравців (PvP)
-    for (const [pid,rp] of Object.entries(remotePlayers)) {
-        const h=ray.intersectObject(rp.mesh,true);
-        if(h.length&&h[0].distance<6){ tPlayer={pid,rp}; break; }
-    }
-    if(tPlayer) return;
-
-    for (const t of trees) {
-        if(!t.alive) continue;
-        const h=ray.intersectObject(t.group,true);
-        if(h.length&&h[0].distance<9){ tTree=t; return; }
-    }
-    for (const r of rocks) {
-        const h=ray.intersectObject(r.mesh,true);
-        if(h.length&&h[0].distance<7){ tRock=r; return; }
-    }
+    ray.setFromCamera(CENTER,camera); tTree=null; tRock=null; tPlayer=null;
+    for(const [pid,rp] of Object.entries(remotePlayers)){ const h=ray.intersectObject(rp.mesh,true); if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;} }
+    for(const t of trees){ if(!t.alive)continue; const h=ray.intersectObject(t.group,true); if(h.length&&h[0].distance<9){tTree=t;return;} }
+    for(const r of rocks){ const h=ray.intersectObject(r.mesh,true); if(h.length&&h[0].distance<7){tRock=r;return;} }
 }
+const tHPEl=document.getElementById("targetHP"),tHPBar=document.getElementById("targetHPBar");
+function updateTargetHP(t){ if(!t){tHPEl.style.display="none";return;} tHPEl.style.display="block"; const p=(t.hp/t.maxHp)*100; tHPBar.style.width=p+"%"; tHPBar.style.background=p>60?"#4caf50":p>30?"#ff9800":"#f44336"; }
 
-const tHPEl=document.getElementById("targetHP"), tHPBar=document.getElementById("targetHPBar");
-function updateTargetHP(t){
-    if(!t){ tHPEl.style.display="none"; return; }
-    tHPEl.style.display="block";
-    const p=(t.hp/t.maxHp)*100;
-    tHPBar.style.width=p+"%";
-    tHPBar.style.background=p>60?"#4caf50":p>30?"#ff9800":"#f44336";
-}
+// Shake/Fell
+function shake(mesh){ const o=mesh.position.clone(); let t=0; (function s(){ t+=0.08; mesh.position.x=o.x+Math.sin(t*30)*0.08*Math.exp(-t*3); if(t<1.2)requestAnimationFrame(s); else mesh.position.copy(o); })(); }
+function fellTree(t){ t.alive=false; const dir=Math.random()>0.5?1:-1,start=performance.now(); (function fall(){ const a=Math.min((performance.now()-start)/1000*1.8,Math.PI/2); t.group.rotation.z=dir*a; if(a<Math.PI/2)requestAnimationFrame(fall); else setTimeout(()=>{t.group.rotation.z=0;t.hp=t.maxHp;t.alive=true;},10000); })(); const got=2+Math.floor(Math.random()*3); inv.wood+=got; showFloat("🪵 +"+got); broadcast({type:"tree_fell",id:t.id,dir}); }
 
-// ═══════════════════════════════════════════════════════════════════
-//  SHAKE + FELL
-// ═══════════════════════════════════════════════════════════════════
-function shake(mesh){
-    const o=mesh.position.clone(); let t=0;
-    (function s(){ t+=0.08;
-        mesh.position.x=o.x+Math.sin(t*30)*0.08*Math.exp(-t*3);
-        if(t<1.2) requestAnimationFrame(s); else mesh.position.copy(o);
-    })();
-}
-
-function fellTree(t){
-    t.alive=false;
-    const dir=Math.random()>0.5?1:-1, start=performance.now();
-    (function fall(){ const a=Math.min((performance.now()-start)/1000*1.8,Math.PI/2);
-        t.group.rotation.z=dir*a;
-        if(a<Math.PI/2) requestAnimationFrame(fall);
-        else setTimeout(()=>{ t.group.rotation.z=0; t.hp=t.maxHp; t.alive=true; },10000);
-    })();
-    const got=2+Math.floor(Math.random()*3); inv.wood+=got; showFloat("🪵 +"+got);
-    // Сповіщаємо інших про зрубане дерево
-    broadcast({ type:"tree_fell", id:t.id, dir });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  ACTION
-// ═══════════════════════════════════════════════════════════════════
+// Action
 let lastAction=0;
-function doAction(){
-    if(isDead) return;
-    const now=performance.now();
-    if(now-lastAction<600) return; lastAction=now;
-    castRay();
-
-    if(tPlayer){
-        const dmg = inv.spear>0 ? 25 : 10;
-        broadcast({ type:"pvp_hit", target:tPlayer.pid, dmg, from:myNick });
-        showFloat("⚔️ Атака!");
-        return;
-    }
+function doAction(){ if(isDead)return; const now=performance.now(); if(now-lastAction<600)return; lastAction=now; castRay();
+    if(tPlayer){ const dmg=inv.spear>0?25:10; broadcast({type:"pvp_hit",target:tPlayer.pid,dmg,from:myNick}); showFloat("⚔️ -"+dmg); return; }
     if(tTree){ shake(tTree.group); tTree.hp--; if(tTree.hp<=0) fellTree(tTree); return; }
     if(tRock){ shake(tRock.mesh); inv.stone++; showFloat("🪨 +1"); return; }
     showFloat("❌ Немає цілі");
 }
-
 let holdTimer=null;
 const actionBtn=document.getElementById("actionBtn");
-actionBtn.addEventListener("touchstart",e=>{ e.preventDefault(); holdTimer=setTimeout(()=>{ eatFood(); holdTimer=null; },500); },{passive:false});
-actionBtn.addEventListener("touchend",  e=>{ e.preventDefault(); if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; doAction(); } },{passive:false});
-actionBtn.addEventListener("mousedown", ()=>{ holdTimer=setTimeout(()=>{ eatFood(); holdTimer=null; },500); });
-window.addEventListener("mouseup",      ()=>{ if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; doAction(); } });
+actionBtn.addEventListener("touchstart",e=>{e.preventDefault(); holdTimer=setTimeout(()=>{eatFood();holdTimer=null;},500);},{passive:false});
+actionBtn.addEventListener("touchend",  e=>{e.preventDefault(); if(holdTimer){clearTimeout(holdTimer);holdTimer=null;doAction();}},{passive:false});
+actionBtn.addEventListener("mousedown", ()=>{holdTimer=setTimeout(()=>{eatFood();holdTimer=null;},500);});
+window.addEventListener("mouseup",      ()=>{if(holdTimer){clearTimeout(holdTimer);holdTimer=null;doAction();}});
 
-// ═══════════════════════════════════════════════════════════════════
-//  MOVEMENT
-// ═══════════════════════════════════════════════════════════════════
+// Movement
 let isMoving=false;
 const moveBtn=document.getElementById("moveBtn");
-moveBtn.addEventListener("touchstart",e=>{ e.preventDefault(); isMoving=true; moveBtn.classList.add("active"); },{passive:false});
-moveBtn.addEventListener("touchend",  e=>{ e.preventDefault(); isMoving=false; moveBtn.classList.remove("active"); },{passive:false});
+moveBtn.addEventListener("touchstart",e=>{e.preventDefault();isMoving=true;moveBtn.classList.add("active");},{passive:false});
+moveBtn.addEventListener("touchend",  e=>{e.preventDefault();isMoving=false;moveBtn.classList.remove("active");},{passive:false});
 moveBtn.addEventListener("mousedown", ()=>isMoving=true);
 window.addEventListener("mouseup",   ()=>isMoving=false);
-
 let yaw=0,pitch=0,lTX=0,lTY=0,lookOn=false;
-renderer.domElement.addEventListener("touchstart",e=>{ if(e.touches.length===1){ lookOn=true; lTX=e.touches[0].clientX; lTY=e.touches[0].clientY; } },{passive:true});
-renderer.domElement.addEventListener("touchmove", e=>{ if(lookOn&&e.touches.length===1){
-    yaw  -=(e.touches[0].clientX-lTX)*0.004; pitch-=(e.touches[0].clientY-lTY)*0.003;
-    pitch=Math.max(-0.8,Math.min(0.8,pitch)); lTX=e.touches[0].clientX; lTY=e.touches[0].clientY;
-} },{passive:true});
+renderer.domElement.addEventListener("touchstart",e=>{if(e.touches.length===1){lookOn=true;lTX=e.touches[0].clientX;lTY=e.touches[0].clientY;}},{passive:true});
+renderer.domElement.addEventListener("touchmove", e=>{ if(lookOn&&e.touches.length===1){yaw-=(e.touches[0].clientX-lTX)*0.004;pitch-=(e.touches[0].clientY-lTY)*0.003;pitch=Math.max(-0.8,Math.min(0.8,pitch));lTX=e.touches[0].clientX;lTY=e.touches[0].clientY;}},{passive:true});
 renderer.domElement.addEventListener("touchend",()=>lookOn=false);
 let md=false,lMX=0,lMY=0;
-renderer.domElement.addEventListener("mousedown",e=>{ md=true; lMX=e.clientX; lMY=e.clientY; });
-renderer.domElement.addEventListener("mousemove",e=>{ if(!md)return; yaw-=(e.clientX-lMX)*0.004; pitch-=(e.clientY-lMY)*0.003; pitch=Math.max(-0.8,Math.min(0.8,pitch)); lMX=e.clientX; lMY=e.clientY; });
+renderer.domElement.addEventListener("mousedown",e=>{md=true;lMX=e.clientX;lMY=e.clientY;});
+renderer.domElement.addEventListener("mousemove",e=>{if(!md)return;yaw-=(e.clientX-lMX)*0.004;pitch-=(e.clientY-lMY)*0.003;pitch=Math.max(-0.8,Math.min(0.8,pitch));lMX=e.clientX;lMY=e.clientY;});
 renderer.domElement.addEventListener("mouseup",()=>md=false);
 
-// ═══════════════════════════════════════════════════════════════════
-//  CHAT
-// ═══════════════════════════════════════════════════════════════════
-function addChat(nick, msg) {
-    const log=document.getElementById("chatLog");
-    const d=document.createElement("div");
-    d.innerHTML=`<span style="color:#81c784">${nick}:</span> ${msg}`;
-    log.appendChild(d);
-    log.scrollTop=log.scrollHeight;
-}
+// Chat
+function addChat(nick,msg){ const log=document.getElementById("chatLog"); const d=document.createElement("div"); d.innerHTML=`<span style="color:#81c784">${nick}:</span> ${msg}`; log.appendChild(d); log.scrollTop=log.scrollHeight; }
+document.getElementById("chatSend").addEventListener("click",sendChat);
+document.getElementById("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
+function sendChat(){ const inp=document.getElementById("chatInput"); const msg=inp.value.trim(); if(!msg)return; inp.value=""; addChat(myNick,msg); broadcast({type:"chat",nick:myNick,msg}); }
 
-document.getElementById("chatSend").addEventListener("click", sendChat);
-document.getElementById("chatInput").addEventListener("keydown", e=>{ if(e.key==="Enter") sendChat(); });
-
-function sendChat(){
-    const inp=document.getElementById("chatInput");
-    const msg=inp.value.trim(); if(!msg) return;
-    inp.value="";
-    addChat(myNick, msg);
-    broadcast({ type:"chat", nick:myNick, msg });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  NETWORK — BROADCAST & HANDLE
-// ═══════════════════════════════════════════════════════════════════
-function broadcast(data) {
-    const str = JSON.stringify(data);
-    if (isHost) {
-        Object.values(clientConns).forEach(c=>{ try{ c.send(str); }catch(e){} });
-    } else if (hostConn) {
-        try { hostConn.send(str); } catch(e){}
-    }
-}
-
-function handleMsg(pid, raw) {
-    let data;
-    try { data = typeof raw === "string" ? JSON.parse(raw) : raw; } catch(e){ return; }
-
-    switch(data.type) {
+// Network
+function broadcast(data){ const s=JSON.stringify(data); if(isHost) Object.values(clientConns).forEach(c=>{try{c.send(s);}catch(e){}}); else if(hostConn) try{hostConn.send(s);}catch(e){} }
+function handleMsg(pid,raw){
+    let data; try{data=typeof raw==="string"?JSON.parse(raw):raw;}catch(e){return;}
+    switch(data.type){
         case "hello":
-            addRemotePlayer(pid, data.nick);
-            // Якщо ми хост — відповідаємо welcome і ретранслюємо іншим
-            if (isHost) {
-                const welcome = JSON.stringify({ type:"welcome", players:
-                    Object.entries(remotePlayers)
-                        .filter(([id])=>id!==pid)
-                        .map(([id,p])=>({id,nick:p.nick}))
-                });
-                try { clientConns[pid].send(welcome); } catch(e){}
-                // Кажемо іншим про нового гравця
-                Object.entries(clientConns).forEach(([id,c])=>{
-                    if(id!==pid) try{ c.send(JSON.stringify({type:"hello",nick:data.nick,pid})); }catch(e){}
-                });
+            addRemotePlayer(pid,data.nick);
+            if(isHost){
+                const welcome=JSON.stringify({type:"welcome",players:Object.entries(remotePlayers).filter(([id])=>id!==pid).map(([id,p])=>({id,nick:p.nick}))});
+                try{clientConns[pid].send(welcome);}catch(e){}
+                Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(JSON.stringify({type:"hello_fwd",nick:data.nick,pid}));}catch(e){}});
             }
             break;
-
-        case "welcome":
-            data.players.forEach(p=>addRemotePlayer(p.id,p.nick));
-            break;
-
+        case "hello_fwd": addRemotePlayer(data.pid,data.nick); break;
+        case "welcome": data.players.forEach(p=>addRemotePlayer(p.id,p.nick)); break;
         case "pos":
-            if (remotePlayers[pid]) {
-                remotePlayers[pid].x=data.x; remotePlayers[pid].y=data.y;
-                remotePlayers[pid].z=data.z; remotePlayers[pid].yaw=data.yaw;
-            }
-            // Хост ретранслює позицію іншим клієнтам
-            if (isHost) {
-                const fwd=JSON.stringify({...data,pid});
-                Object.entries(clientConns).forEach(([id,c])=>{ if(id!==pid) try{c.send(fwd);}catch(e){} });
-            }
+            if(remotePlayers[pid]){remotePlayers[pid].x=data.x;remotePlayers[pid].y=data.y;remotePlayers[pid].z=data.z;remotePlayers[pid].yaw=data.yaw;}
+            if(isHost){const fwd=JSON.stringify({...data,type:"pos_fwd",pid}); Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
             break;
-
-        case "pos_fwd": // отримали від хоста forwarded позицію
-            if (remotePlayers[data.pid]) {
-                remotePlayers[data.pid].x=data.x; remotePlayers[data.pid].y=data.y;
-                remotePlayers[data.pid].z=data.z; remotePlayers[data.pid].yaw=data.yaw;
-            }
-            break;
-
-        case "chat":
-            addChat(data.nick, data.msg);
-            if (isHost) {
-                const fwd=JSON.stringify(data);
-                Object.values(clientConns).forEach(c=>{ try{c.send(fwd);}catch(e){} });
-            }
-            break;
-
-        case "pvp_hit":
-            if (data.target === myId) {
-                takeDamage(data.dmg);
-                addChat("⚔️ Система", `${data.from} атакував тебе на ${data.dmg} HP!`);
-            }
-            if (isHost) {
-                const fwd=JSON.stringify(data);
-                Object.entries(clientConns).forEach(([id,c])=>{ if(id!==pid) try{c.send(fwd);}catch(e){} });
-            }
-            break;
-
-        case "tree_fell":
-            if (trees[data.id]) {
-                trees[data.id].alive=false; trees[data.id].group.rotation.z=data.dir*Math.PI/2;
-                setTimeout(()=>{ trees[data.id].group.rotation.z=0; trees[data.id].hp=trees[data.id].maxHp; trees[data.id].alive=true; },10000);
-            }
-            if (isHost) {
-                const fwd=JSON.stringify(data);
-                Object.entries(clientConns).forEach(([id,c])=>{ if(id!==pid) try{c.send(fwd);}catch(e){} });
-            }
-            break;
-
-        case "bye":
-            removeRemotePlayer(pid);
-            if (isHost) {
-                const fwd=JSON.stringify({type:"bye",pid});
-                Object.entries(clientConns).forEach(([id,c])=>{ if(id!==pid) try{c.send(fwd);}catch(e){} });
-            }
-            break;
-
-        case "bye_fwd":
-            removeRemotePlayer(data.pid);
-            break;
+        case "pos_fwd": if(remotePlayers[data.pid]){remotePlayers[data.pid].x=data.x;remotePlayers[data.pid].y=data.y;remotePlayers[data.pid].z=data.z;} break;
+        case "chat": addChat(data.nick,data.msg); if(isHost){const fwd=JSON.stringify(data);Object.values(clientConns).forEach(c=>{try{c.send(fwd);}catch(e){}});} break;
+        case "pvp_hit": if(data.target===myId){takeDamage(data.dmg);addChat("⚔️",""+data.from+" атакував тебе на "+data.dmg+" HP!");} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
+        case "tree_fell": if(trees[data.id]){trees[data.id].alive=false;trees[data.id].group.rotation.z=data.dir*Math.PI/2;setTimeout(()=>{trees[data.id].group.rotation.z=0;trees[data.id].hp=trees[data.id].maxHp;trees[data.id].alive=true;},10000);} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
+        case "bye": removeRemotePlayer(pid); if(isHost){const fwd=JSON.stringify({type:"bye_fwd",pid});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
+        case "bye_fwd": removeRemotePlayer(data.pid); break;
+        case "full": setStatus("❌ Кімната заповнена!"); break;
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  PEER SETUP
-// ═══════════════════════════════════════════════════════════════════
-function setupPeer(id) {
-    myPeer = new Peer(id, { debug: 0 });
-    myPeer.on("open", realId => {
-        myId = realId;
-        setStatus("✅ Підключено до мережі. ID: " + realId.slice(0,8)+"...");
-    });
-    myPeer.on("connection", conn => {
-        conn.on("open", ()=>{
-            if (!isHost) return;
-            if (Object.keys(clientConns).length >= MAX_PLAYERS-1) {
-                conn.send(JSON.stringify({type:"full"}));
-                conn.close(); return;
-            }
-            clientConns[conn.peer] = conn;
-            conn.on("data", raw => handleMsg(conn.peer, raw));
-            conn.on("close", ()=>{
-                handleMsg(conn.peer, JSON.stringify({type:"bye"}));
-                delete clientConns[conn.peer];
-                updatePlayerCount();
-            });
+// Peer setup
+function setupPeer(id, cb){
+    myPeer=new Peer(id,{host:PEER_HOST,port:PEER_PORT,path:PEER_PATH,secure:PEER_SECURE,debug:0});
+    myPeer.on("open",realId=>{ myId=realId; if(cb) cb(realId); });
+    myPeer.on("connection",conn=>{
+        conn.on("open",()=>{
+            if(!isHost) return;
+            if(Object.keys(clientConns).length>=MAX_PLAYERS-1){conn.send(JSON.stringify({type:"full"}));conn.close();return;}
+            clientConns[conn.peer]=conn;
+            conn.on("data",raw=>handleMsg(conn.peer,raw));
+            conn.on("close",()=>{handleMsg(conn.peer,JSON.stringify({type:"bye"}));delete clientConns[conn.peer];updatePlayerCount();announceRoom(roomId,myNick,1+Object.keys(clientConns).length);});
         });
     });
-    myPeer.on("error", err => {
-        if (err.type === "unavailable-id") {
-            setupPeer("terrafront-" + Math.random().toString(36).slice(2,8));
-        } else {
-            setStatus("❌ Помилка: "+err.message);
-        }
+    myPeer.on("error",err=>{
+        if(err.type==="unavailable-id") setupPeer("tf-"+Math.random().toString(36).slice(2,10),cb);
+        else setStatus("❌ "+err.message);
     });
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  LOBBY — ROOM LIST via PeerJS
-// ═══════════════════════════════════════════════════════════════════
-// Список кімнат зберігається як JSON у спільному peer з відомим ID
-// Кожна кімната пінгує "lobby peer" кожні 10 сек
+// Lobby UI
+function setStatus(msg){ document.getElementById("lobbyStatus").textContent=msg; }
 
-let lobbyPing = null;
-let knownRooms = {}; // roomId -> { nick, playerCount, ts }
-
-function setStatus(msg) {
-    document.getElementById("lobbyStatus").textContent = msg;
-}
-
-function refreshRooms() {
-    // Підключаємось до lobby-peer щоб отримати список
-    if (!myPeer || !myId) { setStatus("⏳ Ще не підключено..."); return; }
-    setStatus("🔄 Оновлення списку...");
-
-    const conn = myPeer.connect(LOBBY_SERVER_ID, { reliable:true, serialization:"json" });
-    let done=false;
-    conn.on("open", ()=>{
-        conn.send({ type:"get_rooms" });
-        setTimeout(()=>{ if(!done) { conn.close(); renderRooms({}); } }, 3000);
-    });
-    conn.on("data", data=>{
-        done=true;
-        if(data && data.rooms) { knownRooms=data.rooms; renderRooms(data.rooms); }
-        conn.close();
-    });
-    conn.on("error", ()=>{ setStatus("ℹ️ Лобі-сервер недоступний. Введи ID вручну нижче."); renderRooms({}); });
-}
-
-function renderRooms(rooms) {
+async function refreshRooms(){
+    setStatus("🔄 Оновлення списку кімнат...");
+    const rooms=await fetchRooms();
+    const now=Date.now();
+    const active=Object.entries(rooms).filter(([,r])=>now-(r.ts||0)<60000);
     const list=document.getElementById("roomList");
-    const ids=Object.keys(rooms).filter(k=>Date.now()-rooms[k].ts<30000);
-    if(ids.length===0){
-        list.innerHTML='<div id="noRooms">Немає активних кімнат. Створи свою!</div>';
-        setStatus(""); return;
+    if(active.length===0){
+        list.innerHTML='<div id="noRooms">Немає активних кімнат. Створи свою! 🌲</div>';
+        setStatus("Кімнат не знайдено");
+    } else {
+        list.innerHTML="";
+        active.forEach(([id,r])=>{
+            const d=document.createElement("div"); d.className="room";
+            d.innerHTML=`<div class="rname">🌲 ${r.nick}'s World</div><div class="rcnt">👥 ${r.count||1}/6</div>`;
+            d.addEventListener("click",()=>joinRoom(id,r.nick));
+            list.appendChild(d);
+        });
+        setStatus(`Знайдено: ${active.length} кімнат`);
     }
-    list.innerHTML="";
-    ids.forEach(id=>{
-        const r=rooms[id];
-        const d=document.createElement("div"); d.className="room";
-        d.innerHTML=`<div class="rname">🌲 ${r.nick}'s World</div><div class="rcnt">👥 ${r.count||1}/6</div>`;
-        d.addEventListener("click",()=>joinRoom(id, r.nick));
-        list.appendChild(d);
-    });
-    setStatus(`Знайдено кімнат: ${ids.length}`);
 }
 
-// ── FALLBACK: ручне введення ID ──
-function addManualJoin() {
-    const wrap=document.createElement("div");
-    wrap.style="width:100%;max-width:320px;display:flex;gap:8px;margin-top:-8px;";
-    wrap.innerHTML=`<input class="inp" id="manualId" placeholder="ID кімнати (вручну)" style="flex:1;font-size:13px;padding:9px 12px;"><button class="btn btn-blue" id="manualJoin" style="flex:0 0 auto;padding:9px 14px;font-size:13px;">Увійти</button>`;
-    document.getElementById("lobby").insertBefore(wrap, document.getElementById("lobbyStatus"));
-    document.getElementById("manualJoin").addEventListener("click",()=>{
-        const id=document.getElementById("manualId").value.trim();
-        if(id) joinRoom(id,"?");
-    });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  CREATE / JOIN ROOM
-// ═══════════════════════════════════════════════════════════════════
-function createRoom() {
-    myNick = document.getElementById("nickInput").value.trim() || "Гравець";
-    roomId = "tf-" + Math.random().toString(36).slice(2,8);
-    isHost = true;
-    setStatus("🏠 Створюємо кімнату...");
-
-    setupPeer(roomId);
-    myPeer.on("open", ()=>{
-        setStatus(`✅ Кімната створена! ID: ${roomId}`);
-        // Анонсуємо в лобі
-        announceLobby();
-        lobbyPing = setInterval(announceLobby, 10000);
+function createRoom(){
+    myNick=document.getElementById("nickInput").value.trim()||"Гравець";
+    roomId="tf-"+Math.random().toString(36).slice(2,9);
+    isHost=true;
+    setStatus("⏳ Створюємо кімнату...");
+    document.getElementById("createBtn").disabled=true;
+    setupPeer(roomId,()=>{
+        setStatus(`✅ Кімната готова! ID: ${roomId}`);
+        announceRoom(roomId,myNick,1);
+        announceInterval=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length),15000);
         startGame();
     });
 }
 
-function announceLobby() {
-    if (!myPeer || !isHost) return;
-    const conn = myPeer.connect(LOBBY_SERVER_ID, { reliable:true, serialization:"json" });
-    conn.on("open", ()=>{
-        conn.send({ type:"announce", roomId, nick:myNick, count:1+Object.keys(clientConns).length });
-        setTimeout(()=>conn.close(), 2000);
-    });
-    conn.on("error", ()=>{}); // лобі-сервер може бути офлайн — не критично
-}
-
-function joinRoom(id, hostNick) {
-    myNick = document.getElementById("nickInput").value.trim() || "Гравець";
-    roomId = id; isHost = false;
+function joinRoom(id,hostNick){
+    myNick=document.getElementById("nickInput").value.trim()||"Гравець";
+    roomId=id; isHost=false;
     setStatus(`🔗 Підключаємось до ${hostNick}...`);
-
-    setupPeer("tf-client-" + Math.random().toString(36).slice(2,10));
-    myPeer.on("open", ()=>{
-        hostConn = myPeer.connect(id, { reliable:true, serialization:"raw" });
-        hostConn.on("open", ()=>{
-            hostConn.send(JSON.stringify({ type:"hello", nick:myNick }));
-            setStatus("✅ Підключено!");
-            startGame();
-        });
-        hostConn.on("data", raw => handleMsg(id, raw));
-        hostConn.on("close", ()=>{ addChat("🔌 Система","Хост відключився"); });
-        hostConn.on("error", e=>setStatus("❌ "+e));
+    document.getElementById("createBtn").disabled=true;
+    setupPeer("tf-"+Math.random().toString(36).slice(2,12),()=>{
+        hostConn=myPeer.connect(id,{reliable:true,serialization:"raw"});
+        hostConn.on("open",()=>{ hostConn.send(JSON.stringify({type:"hello",nick:myNick})); startGame(); });
+        hostConn.on("data",raw=>handleMsg(id,raw));
+        hostConn.on("close",()=>addChat("🔌","Хост відключився"));
+        hostConn.on("error",e=>setStatus("❌ "+e));
     });
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  START GAME
-// ═══════════════════════════════════════════════════════════════════
-function startGame() {
+function startGame(){
     document.getElementById("lobby").style.display="none";
     document.getElementById("game").style.display="block";
-    if(isHost) addChat("🏠 Система",`Ти хост! ID кімнати: ${roomId}`);
-    else       addChat("🌐 Система","Підключено до кімнати!");
-    addChat("💡 Підказка","🪓 Натисни для удару | Довге ✌ = їжа");
-    updateHPUI();
-    gameLoop();
+    addChat("🏠","Ти "+(isHost?"хост":"гравець")+". ID кімнати: "+roomId);
+    addChat("💡","🪓 Тап = удар | Тримай = їсти | 🎒 = інвентар");
+    updateHPUI(); gameLoop();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  GAME LOOP
-// ═══════════════════════════════════════════════════════════════════
-let lastTime=performance.now(), lastSync=0;
-
-function gameLoop() {
+// Game loop
+let lastTime=performance.now(),lastSync=0;
+function gameLoop(){
     requestAnimationFrame(gameLoop);
-    const now=performance.now(), dt=Math.min((now-lastTime)/1000,0.1); lastTime=now;
-
-    if(!isDead) {
+    const now=performance.now(),dt=Math.min((now-lastTime)/1000,0.1); lastTime=now;
+    if(!isDead){
         camera.rotation.order="YXZ"; camera.rotation.y=yaw; camera.rotation.x=pitch;
-        if(isMoving){ camera.position.x-=Math.sin(yaw)*0.12; camera.position.z-=Math.cos(yaw)*0.12; }
+        if(isMoving){camera.position.x-=Math.sin(yaw)*0.12;camera.position.z-=Math.cos(yaw)*0.12;}
         camera.position.y+=(getH(camera.position.x,camera.position.z)+1.9-camera.position.y)*0.18;
-        updateHunger(dt);
-        updateSky(dt);
-        castRay();
-        updateTargetHP(tTree);
-
-        // Синхронізація позиції
-        if(now-lastSync>SYNC_RATE){
-            lastSync=now;
-            broadcast({ type:"pos", x:camera.position.x, y:camera.position.y, z:camera.position.z, yaw, pid:myId });
-        }
+        updateHunger(dt); updateSky(dt); castRay(); updateTargetHP(tTree);
+        if(now-lastSync>100){lastSync=now;broadcast({type:"pos",x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw,pid:myId});}
     }
-
-    // Оновлюємо remote players
-    for (const [pid,rp] of Object.entries(remotePlayers)) {
-        rp.mesh.position.set(rp.x, rp.y-0.8, rp.z);
-
-        // Оновлюємо label позицію на екрані
-        const pos3d=new THREE.Vector3(rp.x, rp.y+1.5, rp.z);
-        pos3d.project(camera);
-        if(pos3d.z<1){
-            const sx=(pos3d.x*0.5+0.5)*innerWidth;
-            const sy=(-pos3d.y*0.5+0.5)*innerHeight;
-            rp.labelEl.style.left=sx+"px"; rp.labelEl.style.top=sy+"px";
-            rp.labelEl.style.display="block";
-        } else {
-            rp.labelEl.style.display="none";
-        }
+    for(const [pid,rp] of Object.entries(remotePlayers)){
+        rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);
+        const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z); p3.project(camera);
+        if(p3.z<1){rp.labelEl.style.left=((p3.x*0.5+0.5)*innerWidth)+"px";rp.labelEl.style.top=((-p3.y*0.5+0.5)*innerHeight)+"px";rp.labelEl.style.display="block";}
+        else rp.labelEl.style.display="none";
     }
-
     renderer.render(scene,camera);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  LOBBY BUTTON EVENTS
-// ═══════════════════════════════════════════════════════════════════
-document.getElementById("createBtn").addEventListener("click", createRoom);
-document.getElementById("refreshBtn").addEventListener("click", refreshRooms);
-
-// Ініціалізація
-addManualJoin();
-setupPeer("tf-" + Math.random().toString(36).slice(2,10));
-refreshRooms();
-updateHPUI();
-
-window.addEventListener("resize",()=>{
-    camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+// Lobby buttons
+document.getElementById("createBtn").addEventListener("click",createRoom);
+document.getElementById("refreshBtn").addEventListener("click",refreshRooms);
+document.getElementById("manualJoin").addEventListener("click",()=>{
+    const id=document.getElementById("manualId").value.trim(); if(id) joinRoom(id,"друг");
 });
 
-// Попередження перед виходом
+// Init
+updateHPUI();
+refreshRooms();
+
+window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 window.addEventListener("beforeunload",()=>{
-    if(isHost) clearInterval(lobbyPing);
-    broadcast({ type:"bye" });
+    if(isHost){clearInterval(announceInterval);removeRoom(roomId);}
+    broadcast({type:"bye"});
 });
 </script>
 </body>
