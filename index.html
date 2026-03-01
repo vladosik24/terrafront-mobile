@@ -580,20 +580,56 @@ function handleMsg(pid,raw){
     let data; try{data=typeof raw==="string"?JSON.parse(raw):raw;}catch(e){return;}
     switch(data.type){
         case "hello":
-            addRemotePlayer(pid,data.nick);
+            addRemotePlayer(pid, data.nick);
             if(isHost){
-                const welcome=JSON.stringify({type:"welcome",players:Object.entries(remotePlayers).filter(([id])=>id!==pid).map(([id,p])=>({id,nick:p.nick}))});
+                // Надсилаємо клієнту: себе (хоста) + всіх інших гравців
+                const welcome = JSON.stringify({
+                    type:"welcome",
+                    hostId: myId,
+                    hostNick: myNick,
+                    players: Object.entries(remotePlayers)
+                        .filter(([id])=>id!==pid)
+                        .map(([id,p])=>({id, nick:p.nick}))
+                });
                 try{clientConns[pid].send(welcome);}catch(e){}
-                Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(JSON.stringify({type:"hello_fwd",nick:data.nick,pid}));}catch(e){}});
+                // Повідомляємо інших клієнтів про нового гравця
+                Object.entries(clientConns).forEach(([id,c])=>{
+                    if(id!==pid) try{c.send(JSON.stringify({type:"hello_fwd",nick:data.nick,pid}));}catch(e){}
+                });
             }
             break;
-        case "hello_fwd": addRemotePlayer(data.pid,data.nick); break;
-        case "welcome": data.players.forEach(p=>addRemotePlayer(p.id,p.nick)); break;
-        case "pos":
-            if(remotePlayers[pid]){remotePlayers[pid].x=data.x;remotePlayers[pid].y=data.y;remotePlayers[pid].z=data.z;remotePlayers[pid].yaw=data.yaw;}
-            if(isHost){const fwd=JSON.stringify({...data,type:"pos_fwd",pid}); Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
+        case "hello_fwd": addRemotePlayer(data.pid, data.nick); break;
+        case "welcome":
+            // Додаємо хоста як remote player — тепер будемо його бачити!
+            if(data.hostId && data.hostId !== myId) addRemotePlayer(data.hostId, data.hostNick);
+            data.players.forEach(p => addRemotePlayer(p.id, p.nick));
             break;
-        case "pos_fwd": if(remotePlayers[data.pid]){remotePlayers[data.pid].x=data.x;remotePlayers[data.pid].y=data.y;remotePlayers[data.pid].z=data.z;} break;
+        case "pos":
+            // Клієнт надіслав позицію хосту
+            if(remotePlayers[pid]){
+                remotePlayers[pid].x=data.x; remotePlayers[pid].y=data.y;
+                remotePlayers[pid].z=data.z; remotePlayers[pid].yaw=data.yaw||0;
+            }
+            // Хост пересилає позицію всім іншим клієнтам
+            if(isHost){
+                const fwd=JSON.stringify({type:"pos_fwd",pid,x:data.x,y:data.y,z:data.z,yaw:data.yaw||0});
+                Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});
+            }
+            break;
+        case "pos_fwd":
+            // Позиція іншого клієнта, переслана хостом
+            if(remotePlayers[data.pid]){
+                remotePlayers[data.pid].x=data.x; remotePlayers[data.pid].y=data.y;
+                remotePlayers[data.pid].z=data.z; remotePlayers[data.pid].yaw=data.yaw||0;
+            }
+            break;
+        case "host_pos":
+            // Позиція хоста, надіслана клієнтам напряму
+            if(remotePlayers[data.pid]){
+                remotePlayers[data.pid].x=data.x; remotePlayers[data.pid].y=data.y;
+                remotePlayers[data.pid].z=data.z; remotePlayers[data.pid].yaw=data.yaw||0;
+            }
+            break;
         case "chat": addChat(data.nick,data.msg); if(isHost){const fwd=JSON.stringify(data);Object.values(clientConns).forEach(c=>{try{c.send(fwd);}catch(e){}});} break;
         case "pvp_hit": if(data.target===myId){takeDamage(data.dmg);addChat("⚔️",""+data.from+" атакував тебе на "+data.dmg+" HP!");} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
         case "tree_fell": if(trees[data.id]){trees[data.id].alive=false;trees[data.id].group.rotation.z=data.dir*Math.PI/2;setTimeout(()=>{trees[data.id].group.rotation.z=0;trees[data.id].hp=trees[data.id].maxHp;trees[data.id].alive=true;},10000);} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
@@ -692,7 +728,18 @@ function gameLoop(){
         if(isMoving){camera.position.x-=Math.sin(yaw)*0.12;camera.position.z-=Math.cos(yaw)*0.12;}
         camera.position.y+=(getH(camera.position.x,camera.position.z)+1.9-camera.position.y)*0.18;
         updateHunger(dt); updateSky(dt); castRay(); updateTargetHP(tTree);
-        if(now-lastSync>100){lastSync=now;broadcast({type:"pos",x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw,pid:myId});}
+        if(now-lastSync>100){
+            lastSync=now;
+            const posData = {x:camera.position.x, y:camera.position.y, z:camera.position.z, yaw, pid:myId};
+            if(isHost){
+                // Хост надсилає свою позицію всім клієнтам напряму
+                const msg = JSON.stringify({type:"host_pos", ...posData});
+                Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});
+            } else {
+                // Клієнт надсилає позицію хосту (хост пересилає іншим)
+                if(hostConn) try{hostConn.send(JSON.stringify({type:"pos", ...posData}));}catch(e){}
+            }
+        }
     }
     for(const [pid,rp] of Object.entries(remotePlayers)){
         rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);
