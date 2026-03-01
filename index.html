@@ -839,19 +839,58 @@ function handleMsg(pid,raw){
     }
 }
 
-function setupPeer(id,cb){
-    myPeer=new Peer(id,{host:"0.peerjs.com",port:443,path:"/",secure:true,debug:0});
-    myPeer.on("open",realId=>{myId=realId;if(cb)cb(realId);});
-    myPeer.on("connection",conn=>{
-        conn.on("open",()=>{
-            if(!isHost)return;
-            if(Object.keys(clientConns).length>=5){conn.send(JSON.stringify({type:"full"}));conn.close();return;}
-            clientConns[conn.peer]=conn;
-            conn.on("data",raw=>handleMsg(conn.peer,raw));
-            conn.on("close",()=>{handleMsg(conn.peer,JSON.stringify({type:"bye"}));delete clientConns[conn.peer];updatePlayerCount();announceRoom(roomId,myNick,1+Object.keys(clientConns).length);});
+function setupPeer(id, cb){
+    // Використовуємо офіційний PeerJS сервер — найнадійніший варіант
+    myPeer = new Peer(id);
+
+    myPeer.on("open", realId => {
+        myId = realId;
+        console.log("PeerJS connected, ID:", realId);
+        setStatus("✅ ID: " + realId);
+        if(cb) cb(realId);
+    });
+
+    myPeer.on("connection", conn => {
+        // Хост отримує нове з'єднання
+        conn.on("open", () => {
+            if(!isHost) return;
+            if(Object.keys(clientConns).length >= 5){
+                conn.send(JSON.stringify({type:"full"}));
+                conn.close();
+                return;
+            }
+            console.log("New client connected:", conn.peer);
+            clientConns[conn.peer] = conn;
+            conn.on("data", data => {
+                // PeerJS може передавати як string так і object
+                const raw = typeof data === "object" ? JSON.stringify(data) : data;
+                handleMsg(conn.peer, raw);
+            });
+            conn.on("close", () => {
+                console.log("Client disconnected:", conn.peer);
+                handleMsg(conn.peer, JSON.stringify({type:"bye"}));
+                delete clientConns[conn.peer];
+                updatePlayerCount();
+            });
+            conn.on("error", e => console.error("conn error:", e));
         });
     });
-    myPeer.on("error",err=>{ if(err.type==="unavailable-id") setupPeer("tf-"+Math.random().toString(36).slice(2,10),cb); else setStatus("❌ "+err.message); });
+
+    myPeer.on("disconnected", () => {
+        console.log("PeerJS disconnected, reconnecting...");
+        myPeer.reconnect();
+    });
+
+    myPeer.on("error", err => {
+        console.error("PeerJS error:", err.type, err);
+        if(err.type === "unavailable-id"){
+            setupPeer("tf-" + Math.random().toString(36).slice(2,10), cb);
+        } else if(err.type === "peer-unavailable"){
+            setStatus("❌ Кімнату не знайдено. Перевір ID.");
+        } else {
+            setStatus("❌ " + err.type + ": " + err.message);
+        }
+    });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -880,26 +919,63 @@ async function refreshRooms(){
 }
 
 function createRoom(){
-    roomId="tf-"+Math.random().toString(36).slice(2,9); isHost=true;
-    setStatus("⏳ Створюємо...");
-    document.getElementById("createBtn").disabled=true;
-    setupPeer(roomId,()=>{
-        announceRoom(roomId,myNick,1);
-        announceInterval=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length),15000);
+    roomId = "tf-" + Math.random().toString(36).slice(2,9);
+    isHost = true;
+    setStatus("⏳ Створюємо кімнату...");
+    document.getElementById("createBtn").disabled = true;
+
+    setupPeer(roomId, () => {
+        console.log("Room created with ID:", roomId);
+        setStatus("✅ Кімната: " + roomId);
+        announceRoom(roomId, myNick, 1);
+        announceInterval = setInterval(() =>
+            announceRoom(roomId, myNick, 1 + Object.keys(clientConns).length), 15000);
         startGame();
     });
 }
 
-function joinRoom(id,hostNick){
-    roomId=id; isHost=false;
-    setStatus("🔗 Підключаємось...");
-    document.getElementById("createBtn").disabled=true;
-    setupPeer("tf-"+Math.random().toString(36).slice(2,12),()=>{
-        hostConn=myPeer.connect(id,{reliable:true,serialization:"raw"});
-        hostConn.on("open",()=>{ hostConn.send(JSON.stringify({type:"hello",nick:myNick,char:myChar})); startGame(); });
-        hostConn.on("data",raw=>handleMsg(id,raw));
-        hostConn.on("close",()=>addChat("🔌","Хост відключився"));
-        hostConn.on("error",e=>setStatus("❌ "+e));
+function joinRoom(id, hostNick){
+    // Чистимо ID від пробілів (частий баг при ручному введенні)
+    id = id.trim().toLowerCase();
+    roomId = id; isHost = false;
+    setStatus("🔗 Підключаємось до " + id + "...");
+    document.getElementById("createBtn").disabled = true;
+
+    setupPeer("tf-" + Math.random().toString(36).slice(2,12), () => {
+        console.log("Connecting to host:", id);
+        hostConn = myPeer.connect(id, { reliable: true });
+
+        let connected = false;
+
+        hostConn.on("open", () => {
+            connected = true;
+            console.log("Connected to host!");
+            setStatus("✅ Підключено!");
+            hostConn.send(JSON.stringify({type:"hello", nick:myNick, char:myChar}));
+            startGame();
+        });
+
+        hostConn.on("data", data => {
+            const raw = typeof data === "object" ? JSON.stringify(data) : data;
+            handleMsg(id, raw);
+        });
+
+        hostConn.on("close", () => {
+            addChat("🔌", "Хост відключився");
+        });
+
+        hostConn.on("error", e => {
+            console.error("hostConn error:", e);
+            setStatus("❌ Помилка з'єднання: " + e);
+        });
+
+        // Таймаут якщо не підключились за 8 сек
+        setTimeout(() => {
+            if(!connected){
+                setStatus("❌ Не вдалось підключитись. Перевір ID і спробуй ще раз.");
+                document.getElementById("createBtn").disabled = false;
+            }
+        }, 8000);
     });
 }
 
