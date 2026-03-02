@@ -18,7 +18,7 @@ canvas { display:block; }
 }
 #charSelect h2 { color:#ffe082; font-size:22px; letter-spacing:1px; }
 #charSelect p  { color:#aaa; font-size:12px; }
-.charCards { display:flex; gap:16px; }
+.charCards { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
 .charCard {
     width:130px; background:#ffffff0d; border:2px solid #fff2;
     border-radius:14px; padding:16px 10px; text-align:center;
@@ -29,6 +29,8 @@ canvas { display:block; }
 .charCard .avatar { font-size:52px; margin-bottom:8px; }
 .charCard .cname  { font-size:14px; font-weight:bold; color:#fff; }
 .charCard .cdesc  { font-size:11px; color:#aaa; margin-top:4px; }
+/* Скін-кольори для карток */
+.charCard .skinPrev { width:40px; height:60px; margin:0 auto 8px; position:relative; }
 
 /* ══ LOBBY ══ */
 #lobby {
@@ -135,9 +137,6 @@ canvas { display:block; }
 }
 #buildModeBtn.active { border-color:#ffe082; background:#ffe08230; }
 
-/* ══ GHOST / PREVIEW ══ */
-/* shown via Three.js ghost mesh */
-
 /* ══ INVENTORY ══ */
 #invBtn {
     position:absolute; top:8px; left:50%; transform:translateX(-50%);
@@ -221,17 +220,27 @@ canvas { display:block; }
 <!-- ══ CHARACTER SELECT ══ -->
 <div id="charSelect">
     <h2>🧍 Вибери персонажа</h2>
-    <p>Це лише вигляд — можна змінити пізніше</p>
+    <p>Кожен має унікальні переваги</p>
     <div class="charCards">
         <div class="charCard selected" id="charMale" onclick="selectChar('male')">
             <div class="avatar">🧑</div>
-            <div class="cname">Хлопець</div>
-            <div class="cdesc">Сильніший удар</div>
+            <div class="cname">Воїн</div>
+            <div class="cdesc">⚔️ +50% удар<br>🛡️ Більше HP</div>
         </div>
         <div class="charCard" id="charFemale" onclick="selectChar('female')">
             <div class="avatar">👩</div>
-            <div class="cname">Дівчина</div>
-            <div class="cdesc">Швидше бігає</div>
+            <div class="cname">Мисливець</div>
+            <div class="cdesc">💨 +30% швидкість<br>🏹 Більше крафту</div>
+        </div>
+        <div class="charCard" id="charArcher" onclick="selectChar('archer')">
+            <div class="avatar">🧝</div>
+            <div class="cname">Лісовик</div>
+            <div class="cdesc">🌿 +ресурси<br>🪓 Майстер лісу</div>
+        </div>
+        <div class="charCard" id="charKnight" onclick="selectChar('knight')">
+            <div class="avatar">🧙</div>
+            <div class="cname">Маг</div>
+            <div class="cdesc">✨ Унікальний вигляд<br>🔮 Спецздібності</div>
         </div>
     </div>
     <input class="inp" id="nickInput" placeholder="Твій нікнейм" maxlength="16" style="max-width:280px;">
@@ -311,14 +320,60 @@ canvas { display:block; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════════
-//  CHARACTER SELECT
+//  CHARACTER SELECT — 4 типи з унікальними скінами
 // ══════════════════════════════════════════════════════════════
-let myChar = "male"; // "male" | "female"
+// male=Воїн, female=Мисливець, archer=Лісовик, knight=Маг
+let myChar = "male";
+
+const CHAR_CONFIGS = {
+    male: {
+        bodyColor:  0x1565c0, // синя кольчуга
+        pantsColor: 0x37474f, // темні штани
+        hairColor:  0x3e2723, // темно-каштановий
+        skinColor:  0xffcc99,
+        shoeColor:  0x1a1a1a,
+        beltColor:  0x5d4037,
+        feature: "armor",     // наплічники
+        maxHP: 130, speed: 0.12, dmg: 18,
+    },
+    female: {
+        bodyColor:  0x880e4f, // темно-рожева куртка
+        pantsColor: 0x4a148c, // фіолетові штани
+        hairColor:  0xf57f17, // золоте волосся
+        skinColor:  0xffe0b2,
+        shoeColor:  0x4e342e,
+        beltColor:  0x6d4c41,
+        feature: "braid",     // коса
+        maxHP: 100, speed: 0.16, dmg: 12,
+    },
+    archer: {
+        bodyColor:  0x2e7d32, // зелений плащ
+        pantsColor: 0x5d4037, // коричневі штани
+        hairColor:  0xffa000, // рудий
+        skinColor:  0xffe0b2,
+        shoeColor:  0x3e2723,
+        beltColor:  0x4caf50,
+        feature: "hood",      // капюшон
+        maxHP: 100, speed: 0.14, dmg: 14,
+    },
+    knight: {
+        bodyColor:  0x4a148c, // фіолетова мантія
+        pantsColor: 0x311b92,
+        hairColor:  0xe0e0e0, // сиве волосся
+        skinColor:  0xffccbc,
+        shoeColor:  0x212121,
+        beltColor:  0x7b1fa2,
+        feature: "wizard",    // висока шапка + борода
+        maxHP: 110, speed: 0.11, dmg: 15,
+    },
+};
 
 function selectChar(c) {
     myChar = c;
-    document.getElementById("charMale").classList.toggle("selected", c==="male");
-    document.getElementById("charFemale").classList.toggle("selected", c==="female");
+    ["male","female","archer","knight"].forEach(id=>{
+        document.getElementById("char"+id.charAt(0).toUpperCase()+id.slice(1))
+            .classList.toggle("selected", id===c);
+    });
 }
 
 function goLobby() {
@@ -331,31 +386,12 @@ function goLobby() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  PANTRY LOBBY
+//  LOBBY NETWORKING (Pantry)
 // ══════════════════════════════════════════════════════════════
-// JSONBin.io — безкоштовний надійний хмарний storage для списку кімнат
-// Bin ID та ключ вже вбудовані, не потребує реєстрації
-const JSONBIN_BIN_ID  = "675b8e2bacd3cb34a8b2c9f1"; // публічний bin для Terrafront
-const JSONBIN_API_KEY = "$2a$10$wMxTzMGhTerrafrontPublicKey00";  // read-only public key
-const JSONBIN_BASE    = "https://api.jsonbin.io/v3/b";
-
-// Fallback: localStorage для тестування + синхронізація між вкладками
 const BC = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("tf_rooms") : null;
 let _localRooms = {};
 
 async function fetchRooms() {
-    // Спочатку пробуємо JSONBin
-    try {
-        const r = await fetch(`${JSONBIN_BASE}/${JSONBIN_BIN_ID}/latest`, {
-            headers: { "X-Access-Key": JSONBIN_API_KEY },
-            cache: "no-store"
-        });
-        if(r.ok){
-            const d = await r.json();
-            return d.record || {};
-        }
-    } catch(e){}
-    // Fallback: Pantry
     try {
         const r = await fetch(
             `https://getpantry.cloud/apiv1/pantry/124c2222-9ff7-4e8c-a5e6-448ddc389d41/basket/rooms`,
@@ -370,8 +406,6 @@ async function announceRoom(rid, nick, count){
     const now = Date.now();
     _localRooms[rid] = {nick, count, char:myChar, ts:now};
     if(BC) BC.postMessage({type:"room_update", rooms:_localRooms});
-
-    // Pantry (основний)
     try {
         let rooms = await fetchRooms();
         Object.keys(rooms).forEach(k=>{ if(now-(rooms[k].ts||0)>60000) delete rooms[k]; });
@@ -395,7 +429,6 @@ async function removeRoom(rid){
     } catch(e){}
 }
 
-// Слухаємо оновлення з інших вкладок (тест на одному пристрої)
 if(BC) BC.onmessage = e => { if(e.data.type==="room_update") _localRooms=e.data.rooms; };
 
 // ══════════════════════════════════════════════════════════════
@@ -478,50 +511,7 @@ for(let i=0;i<30;i++){
     rocks.push({mesh:m,x,z,id:rocks.length}); scene.add(m);
 }
 
-// ══════════════════════════════════════════════════════════════
-//  СКІФИ — AI ВОРОГИ
-// ══════════════════════════════════════════════════════════════
-const scythians = [];
-const SCYTH_BODY = new THREE.MeshStandardMaterial({color:0x8B4513,roughness:0.9});
-const SCYTH_SKIN = new THREE.MeshStandardMaterial({color:0xd2956a,roughness:0.9});
-const SCYTH_HAT  = new THREE.MeshStandardMaterial({color:0xc0392b,roughness:0.9});
-const SCYTH_WPAN = new THREE.MeshStandardMaterial({color:0x888888,roughness:0.5});
-
-function makeScythMesh(){
-    const g=new THREE.Group();
-    const torso=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,0.25),SCYTH_BODY); torso.position.y=0.05; g.add(torso);
-    [-0.13,0.13].forEach(ox=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.08,0.65,6),SCYTH_BODY); leg.position.set(ox,-0.52,0); g.add(leg); });
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.38,0.32),SCYTH_SKIN); head.position.y=0.56; g.add(head);
-    const hat=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.2,0.45,8),SCYTH_HAT); hat.position.y=0.88; g.add(hat);
-    [-0.32,0.32].forEach(ox=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.06,0.5,6),SCYTH_BODY); arm.position.set(ox,0.02,0); arm.rotation.z=ox>0?0.3:-0.3; g.add(arm); });
-    const spear=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.6,6),SCYTH_WPAN); spear.position.set(0.45,-0.1,0); spear.rotation.z=0.2; g.add(spear);
-    g.traverse(ch=>{ if(ch.isMesh) ch.castShadow=true; });
-    return g;
-}
-
-function spawnScythian(x, z){
-    const h=getH(x,z);
-    const g=makeScythMesh();
-    g.position.set(x,h,z);
-    const maxHp=40+Math.floor(Math.random()*20);
-    const s={
-        group:g, hp:maxHp, maxHp, x, z,
-        alive:true, speed:0.015+Math.random()*0.015,
-        dmg:8+Math.floor(Math.random()*7), lastAtk:0,
-        state:"patrol", patrolAngle:Math.random()*Math.PI*2,
-        patrolTimer:2, hitFlash:0, id:scythians.length
-    };
-    scythians.push(s);
-    scene.add(g);
-    return s;
-}
-
-for(let i=0;i<12;i++){
-    const a=Math.random()*Math.PI*2, d=35+Math.random()*55;
-    spawnScythian(Math.cos(a)*d, Math.sin(a)*d);
-}
-
-// Рослини — джерело клітковини
+// ── Plants ──
 const plants=[];
 const PLANT_MAT=new THREE.MeshStandardMaterial({color:0x2ecc71,roughness:1});
 for(let i=0;i<50;i++){
@@ -536,154 +526,200 @@ for(let i=0;i<50;i++){
     plants.push({mesh:stem,x,z,alive:true});
 }
 
-function updateScythians(dt){
-    const now=performance.now();
-    const px=camera.position.x, pz=camera.position.z;
-    scythians.forEach(s=>{
-        if(!s.alive) return;
-        const dx=px-s.x, dz=pz-s.z;
-        const dist=Math.sqrt(dx*dx+dz*dz);
-        if(dist<20) s.state="chase"; else if(dist>32) s.state="patrol";
-
-        if(s.state==="patrol"){
-            s.patrolTimer-=dt;
-            if(s.patrolTimer<=0){ s.patrolAngle+=(Math.random()-0.5)*1.5; s.patrolTimer=2+Math.random()*3; }
-            s.x+=Math.cos(s.patrolAngle)*s.speed*0.4;
-            s.z+=Math.sin(s.patrolAngle)*s.speed*0.4;
-        } else {
-            const angle=Math.atan2(dx,dz);
-            s.x+=Math.sin(angle)*s.speed;
-            s.z+=Math.cos(angle)*s.speed;
-            s.group.rotation.y=angle;
-            if(dist<2.5 && now-s.lastAtk>2000 && !isDead){
-                s.lastAtk=now;
-                takeDamage(s.dmg);
-                shake(s.group);
-            }
-        }
-
-        s.group.position.x=s.x;
-        s.group.position.z=s.z;
-        s.group.position.y=getH(s.x,s.z)+Math.sin(now*0.005)*0.04;
-
-        // Flash при ударі
-        s.hitFlash=Math.max(0,s.hitFlash-dt);
-        const flash=s.hitFlash>0?1:0;
-        s.group.traverse(ch=>{ if(ch.isMesh&&ch.material.emissive) ch.material.emissive.setRGB(flash,0,0); });
-    });
-}
-
-function hitScythian(s){
-    const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();
-    s.hp-=dmg; s.hitFlash=0.25;
-    shake(s.group);
-    showFloat("⚔️ Скіф -"+dmg);
-    if(s.hp<=0) killScythian(s);
-    else updateTargetHPScyth(s);
-}
-
-function killScythian(s){
-    s.alive=false; scene.remove(s.group);
-    const drops=[];
-    if(Math.random()<0.7){ inv.meat+=1; drops.push("🥩"); }
-    if(Math.random()<0.5){ inv.metal+=1; drops.push("⚙️"); }
-    if(Math.random()<0.4){ inv.fiber+=1+Math.floor(Math.random()*2); drops.push("🌿"); }
-    if(Math.random()<0.25){ inv.coal+=1; drops.push("🪨"); }
-    showFloat("💀 Скіф! "+drops.join("")); renderInv();
-    setTimeout(()=>{
-        const a=Math.random()*Math.PI*2,d=35+Math.random()*55;
-        const ns=spawnScythian(Math.cos(a)*d,Math.sin(a)*d);
-        scythians[s.id]=ns; ns.id=s.id;
-    },30000);
-}
-
-function updateTargetHPScyth(s){
-    if(!s||!s.alive){ tHPEl.style.display="none"; return; }
-    tHPEl.style.display="block";
-    const p=(s.hp/s.maxHp)*100;
-    tHPBar.style.width=p+"%";
-    tHPBar.style.background=p>60?"#4caf50":p>30?"#ff9800":"#f44336";
-}
-
 // ══════════════════════════════════════════════════════════════
-//  CHARACTER MESH FACTORY
+//  CHARACTER MESH FACTORY — детальні скіни для 4 типів
 // ══════════════════════════════════════════════════════════════
+function mat(color, rough=0.8, metal=0){
+    return new THREE.MeshStandardMaterial({color, roughness:rough, metalness:metal});
+}
+
 function makeCharMesh(charType) {
-    const group = new THREE.Group();
-    const isFemale = charType === "female";
+    const cfg = CHAR_CONFIGS[charType] || CHAR_CONFIGS.male;
+    const g = new THREE.Group();
 
-    // Тіло
-    const bodyColor = isFemale ? 0xe91e8c : 0x1976d2;
-    const skinColor = 0xffcc99;
+    const bodyM  = mat(cfg.bodyColor,  0.8);
+    const pantsM = mat(cfg.pantsColor, 0.9);
+    const skinM  = mat(cfg.skinColor,  0.9);
+    const hairM  = mat(cfg.hairColor,  0.95);
+    const shoeM  = mat(cfg.shoeColor,  0.85);
+    const beltM  = mat(cfg.beltColor,  0.7);
 
-    const bodyMat = new THREE.MeshStandardMaterial({color:bodyColor, roughness:0.8});
-    const skinMat = new THREE.MeshStandardMaterial({color:skinColor, roughness:0.9});
-    const hairMat = new THREE.MeshStandardMaterial({color: isFemale ? 0xcc8800 : 0x3a2000, roughness:1});
-    const pantsMat= new THREE.MeshStandardMaterial({color: isFemale ? 0x9c27b0 : 0x37474f, roughness:0.9});
-
-    // Ноги
-    [-0.15,0.15].forEach(ox=>{
-        const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.7,6),pantsMat);
-        leg.position.set(ox,-0.55,0); group.add(leg);
-        // Взуття
-        const shoe=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.1,0.3),new THREE.MeshStandardMaterial({color:0x222222}));
-        shoe.position.set(ox,-0.95,0.05); group.add(shoe);
+    // ── Ноги ──
+    [-0.14, 0.14].forEach((ox,i)=>{
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.72,7), pantsM);
+        leg.position.set(ox,-0.56,0); g.add(leg);
+        // коліно
+        const knee = new THREE.Mesh(new THREE.SphereGeometry(0.105,6,6), pantsM);
+        knee.position.set(ox,-0.35,0); g.add(knee);
+        // взуття
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.34), shoeM);
+        shoe.position.set(ox,-0.97,0.06); g.add(shoe);
     });
 
-    // Тулуб
-    const torso=new THREE.Mesh(new THREE.BoxGeometry(isFemale?0.52:0.58,0.65,0.28),bodyMat);
-    torso.position.y=0; group.add(torso);
+    // ── Тулуб ──
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.56,0.68,0.3), bodyM);
+    torso.position.y=0.02; g.add(torso);
 
-    // Руки
-    [-0.38,0.38].forEach(ox=>{
-        const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.07,0.55,6),bodyMat);
-        arm.position.set(ox,-0.05,0); arm.rotation.z=ox>0?0.2:-0.2; group.add(arm);
-        const hand=new THREE.Mesh(new THREE.SphereGeometry(0.09,6,6),skinMat);
-        hand.position.set(ox*1.15,-0.32,0); group.add(hand);
+    // Пояс
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.08,0.33), beltM);
+    belt.position.y=-0.3; g.add(belt);
+
+    // ── Руки ──
+    [-0.4, 0.4].forEach(ox=>{
+        const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.38,6), bodyM);
+        upper.position.set(ox,0.1,0); upper.rotation.z=ox>0?0.25:-0.25; g.add(upper);
+        const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.07,0.32,6), skinM);
+        lower.position.set(ox*(1.05),-0.1,0); lower.rotation.z=ox>0?0.3:-0.3; g.add(lower);
+        // рука/кулак
+        const fist = new THREE.Mesh(new THREE.SphereGeometry(0.09,7,7), skinM);
+        fist.position.set(ox*1.12,-0.27,0); g.add(fist);
     });
 
-    // Голова
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.4,0.36),skinMat);
-    head.position.y=0.6; group.add(head);
+    // ── Шия ──
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.14,7), skinM);
+    neck.position.y=0.41; g.add(neck);
+
+    // ── Голова ──
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.42,0.38), skinM);
+    head.position.y=0.64; g.add(head);
+    // Підборіддя
+    const chin = new THREE.Mesh(new THREE.SphereGeometry(0.12,7,6), skinM);
+    chin.position.set(0,0.47,0.12); g.add(chin);
 
     // Очі
-    const eyeGeo=new THREE.SphereGeometry(0.04,6,6);
-    const eyeMat=new THREE.MeshStandardMaterial({color:0x222222});
-    [-0.09,0.09].forEach(ox=>{
-        const eye=new THREE.Mesh(eyeGeo,eyeMat); eye.position.set(ox,0.63,0.18); group.add(eye);
+    const eyeG = new THREE.SphereGeometry(0.05,8,8);
+    const eyeM = mat(0x1a1a2e,1);
+    [-0.1,0.1].forEach(ox=>{
+        const eye = new THREE.Mesh(eyeG,eyeM);
+        eye.position.set(ox,0.68,0.19); g.add(eye);
+        // відблиск
+        const gl = new THREE.Mesh(new THREE.SphereGeometry(0.02,4,4), mat(0xffffff,0));
+        gl.position.set(ox+0.02,0.7,0.22); g.add(gl);
+    });
+    // Брови
+    [-0.1,0.1].forEach(ox=>{
+        const br = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.02,0.03), mat(cfg.hairColor,1));
+        br.position.set(ox,0.77,0.2); br.rotation.z=ox>0?0.1:-0.1; g.add(br);
     });
 
-    // Волосся
-    if(isFemale){
-        // Довге волосся
-        const hairTop=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.15,0.38),hairMat); hairTop.position.set(0,0.82,0); group.add(hairTop);
-        const hairBack=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.6,0.08),hairMat); hairBack.position.set(0,0.55,-0.2); group.add(hairBack);
-        [-0.2,0.2].forEach(ox=>{
-            const hairSide=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.55,0.14),hairMat); hairSide.position.set(ox,0.52,0.05); group.add(hairSide);
+    // ── ОСОБЛИВОСТІ ЗА ТИПОМ ──
+    if(cfg.feature==="armor"){
+        // Воїн: наплічники + нагрудник
+        [-0.36,0.36].forEach(ox=>{
+            const shoulder=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,6), mat(0x546e7a,0.6,0.3));
+            shoulder.position.set(ox,0.2,0); shoulder.scale.set(1,0.8,1); g.add(shoulder);
         });
-        // Спідниця
-        const skirt=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.38,0.35,8),bodyMat); skirt.position.y=-0.28; group.add(skirt);
-    } else {
-        // Коротке волосся
-        const hairTop=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.12,0.38),hairMat); hairTop.position.set(0,0.82,0); group.add(hairTop);
-        const hairFront=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.08,0.1),hairMat); hairFront.position.set(0,0.78,0.18); group.add(hairFront);
+        // нагрудник
+        const chest=new THREE.Mesh(new THREE.BoxGeometry(0.48,0.45,0.08), mat(0x455a64,0.5,0.4));
+        chest.position.set(0,0.1,0.16); g.add(chest);
+        // хрест на нагруднику
+        const cr1=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.04,0.06),mat(0x90a4ae,0.3,0.6));
+        cr1.position.set(0,0.12,0.2); g.add(cr1);
+        const cr2=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.3,0.06),mat(0x90a4ae,0.3,0.6));
+        cr2.position.set(0,0.12,0.2); g.add(cr2);
+        // Коротке темне волосся
+        const ht=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.14,0.4),hairM); ht.position.set(0,0.88,0); g.add(ht);
+        const hf=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.1,0.1),hairM); hf.position.set(0,0.84,0.19); g.add(hf);
+        // вуха
+        [-0.21,0.21].forEach(ox=>{
+            const ear=new THREE.Mesh(new THREE.SphereGeometry(0.065,6,6),skinM);
+            ear.position.set(ox,0.64,-0.01); ear.scale.set(0.6,0.8,0.5); g.add(ear);
+        });
+    }
+    else if(cfg.feature==="braid"){
+        // Мисливець: довге волосся + коса
+        const ht=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.16,0.4),hairM); ht.position.set(0,0.88,0); g.add(ht);
+        const hback=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.7,0.1),hairM); hback.position.set(0,0.55,-0.2); g.add(hback);
+        [-0.19,0.19].forEach(ox=>{
+            const hs=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.6,0.15),hairM); hs.position.set(ox,0.53,0.04); g.add(hs);
+        });
+        // коса — ланцюжок сфер
+        for(let bi=0;bi<6;bi++){
+            const bs=new THREE.Mesh(new THREE.SphereGeometry(0.065-bi*0.006,6,6),hairM);
+            bs.position.set(0.15,0.2-bi*0.15,-0.2); g.add(bs);
+        }
+        // вушна сережка
+        const earring=new THREE.Mesh(new THREE.TorusGeometry(0.025,0.008,6,8),mat(0xffd700,0.3,0.8));
+        earring.position.set(-0.22,0.59,0); g.add(earring);
+        // сережка права
+        const earring2=new THREE.Mesh(new THREE.TorusGeometry(0.02,0.007,6,8),mat(0xffd700,0.3,0.8));
+        earring2.position.set(0.22,0.59,0); g.add(earring2);
+        // вуха
+        [-0.21,0.21].forEach(ox=>{
+            const ear=new THREE.Mesh(new THREE.SphereGeometry(0.065,6,6),skinM);
+            ear.position.set(ox,0.64,-0.01); ear.scale.set(0.6,0.8,0.5); g.add(ear);
+        });
+    }
+    else if(cfg.feature==="hood"){
+        // Лісовик: капюшон
+        const hood=new THREE.Mesh(new THREE.SphereGeometry(0.26,8,8),mat(cfg.bodyColor,0.9));
+        hood.position.set(0,0.82,0); hood.scale.set(1,0.9,1); g.add(hood);
+        const hoodFront=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.25,0.12),mat(cfg.bodyColor,0.9));
+        hoodFront.position.set(0,0.7,0.18); g.add(hoodFront);
+        // вуха ельфа — загострені
+        [-0.22,0.22].forEach(ox=>{
+            const ear=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.2,6),skinM);
+            ear.position.set(ox,0.7,0); ear.rotation.z=ox>0?-Math.PI/3:Math.PI/3; g.add(ear);
+        });
+        // рудий чуб
+        const hair=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.08,0.2),hairM);
+        hair.position.set(0,0.81,0.14); g.add(hair);
+        // плащ
+        const cloak=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.85,0.06),mat(cfg.bodyColor,0.95));
+        cloak.position.set(0,-0.15,-0.16); g.add(cloak);
+        const cloakBot=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.35,0.4,8),mat(cfg.bodyColor,0.95));
+        cloakBot.position.set(0,-0.62,-0.1); g.add(cloakBot);
+    }
+    else if(cfg.feature==="wizard"){
+        // Маг: висока шапка + борода + посох
+        // Висока гостра шапка
+        const hatBase=new THREE.Mesh(new THREE.CylinderGeometry(0.23,0.23,0.12,8),mat(cfg.bodyColor,0.8));
+        hatBase.position.set(0,0.93,0); g.add(hatBase);
+        const hatTop=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.7,8),mat(cfg.bodyColor,0.8));
+        hatTop.position.set(0,1.23,0); g.add(hatTop);
+        // зірка на шапці
+        const star=new THREE.Mesh(new THREE.OctahedronGeometry(0.06),mat(0xffd700,0.2,0.8));
+        star.position.set(0,1.61,0); star.rotation.y=Math.PI/8; g.add(star);
+        // Борода
+        const beard=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.12),mat(0xe0e0e0,1));
+        beard.position.set(0,0.45,0.16); g.add(beard);
+        const beardPoint=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.22,6),mat(0xe0e0e0,1));
+        beardPoint.position.set(0,0.27,0.17); beardPoint.rotation.x=0.3; g.add(beardPoint);
+        // Вуса
+        const moustache=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.05,0.08),mat(0xbdbdbd,1));
+        moustache.position.set(0,0.58,0.2); g.add(moustache);
+        // Мантія — ширша знизу
+        const robe=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.42,0.9,8),mat(cfg.bodyColor,0.8));
+        robe.position.set(0,-0.5,0); g.add(robe);
+        // Зірковий орб у руці
+        const orb=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8),mat(0x7c4dff,0.1,0.3));
+        orb.position.set(0.42,-0.28,0);
+        const orbGlow=new THREE.PointLight(0x7c4dff,0.5,2); orbGlow.position.copy(orb.position); g.add(orbGlow);
+        g.add(orb);
+        // сиве коротке волосся видно під шапкою
+        [-0.16,0.16].forEach(ox=>{
+            const hw=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.12,0.12),mat(0xe0e0e0,1));
+            hw.position.set(ox,0.83,0); g.add(hw);
+        });
     }
 
-    group.traverse(c=>{ if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; } });
-    return group;
+    g.traverse(c=>{ if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; } });
+    return g;
 }
 
 // ══════════════════════════════════════════════════════════════
 //  REMOTE PLAYERS
 // ══════════════════════════════════════════════════════════════
 const remotePlayers = {};
+const CHAR_ICONS = {male:"⚔️", female:"🏹", archer:"🌿", knight:"🔮"};
 
 function addRemotePlayer(pid, nick, charType) {
     if(remotePlayers[pid]) return;
     const mesh = makeCharMesh(charType || "male");
     mesh.position.set(0,5,0); scene.add(mesh);
     const label=document.createElement("div"); label.className="playerLabel";
-    label.textContent=(charType==="female"?"👩 ":"🧑 ")+nick;
+    const icon = CHAR_ICONS[charType] || "🧑";
+    label.textContent=icon+" "+nick;
     document.getElementById("game").appendChild(label);
     remotePlayers[pid]={nick,charType:charType||"male",x:0,y:5,z:0,yaw:0,mesh,labelEl:label,hp:100};
     updatePlayerCount();
@@ -710,7 +746,7 @@ const BUILD_DEFS = {
 let buildMode    = false;
 let selectedBuild= "wall";
 let ghostMesh    = null;
-const placedBuildings = []; // { mesh, type, x, y, z, ry }
+const placedBuildings = [];
 
 function toggleBuildMode(){
     buildMode = !buildMode;
@@ -726,126 +762,101 @@ function selectBuild(type){
     document.querySelectorAll(".buildSlot").forEach(s=>s.classList.toggle("sel",s.dataset.build===type));
 }
 
-function getGhostMat(){ return new THREE.MeshStandardMaterial({color:0x4fc3f7,transparent:true,opacity:0.45,depthWrite:false}); }
-
 function updateGhost(){
     const def=BUILD_DEFS[selectedBuild];
+    if(!def) return;
     if(!ghostMesh || ghostMesh.userData.type!==selectedBuild){
         if(ghostMesh) scene.remove(ghostMesh);
-        ghostMesh=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d), getGhostMat());
+        ghostMesh=new THREE.Mesh(
+            new THREE.BoxGeometry(def.w,def.h,def.d),
+            new THREE.MeshStandardMaterial({color:0x4fc3f7,transparent:true,opacity:0.45,depthWrite:false})
+        );
         ghostMesh.userData.type=selectedBuild;
         scene.add(ghostMesh);
     }
-    // Позиціонуємо перед гравцем на відстань 2.5м
     const dist=2.5;
     const px=camera.position.x - Math.sin(yaw)*dist;
     const pz=camera.position.z - Math.cos(yaw)*dist;
     const groundY=getH(px,pz);
-
-    if(selectedBuild==="floor" || selectedBuild==="roof"){
-        ghostMesh.position.set(
-            Math.round(px/3)*3,
-            groundY + (selectedBuild==="roof"?3.2:0.1),
-            Math.round(pz/3)*3
-        );
+    if(selectedBuild==="floor"||selectedBuild==="roof"){
+        ghostMesh.position.set(Math.round(px/3)*3,groundY+(selectedBuild==="roof"?3.2:0.1),Math.round(pz/3)*3);
         ghostMesh.rotation.y=0;
     } else if(selectedBuild==="stairs"){
-        ghostMesh.position.set(px, groundY+1, pz);
-        ghostMesh.rotation.y=yaw;
+        ghostMesh.position.set(px,groundY+1,pz); ghostMesh.rotation.y=yaw;
     } else {
-        ghostMesh.position.set(px, groundY+def.h/2, pz);
+        ghostMesh.position.set(px,groundY+def.h/2,pz);
         ghostMesh.rotation.y=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
     }
 }
 
-let movingBuilding = null; // будівля яку переміщуємо
+let movingBuilding=null;
 
 function getNearestBuilding(maxDist=6){
-    let best=null, bestD=maxDist;
+    let best=null,bestD=maxDist;
     ray.setFromCamera(CENTER,camera);
     for(let i=0;i<placedBuildings.length;i++){
         const b=placedBuildings[i];
         if(!b.mesh.parent) continue;
         const hits=ray.intersectObject(b.mesh,false);
-        if(hits.length && hits[0].distance<bestD){ bestD=hits[0].distance; best=i; }
+        if(hits.length&&hits[0].distance<bestD){bestD=hits[0].distance;best=i;}
     }
     return best;
 }
 
 function placeBuilding(){
     if(!buildMode) return;
-
-    // ── Режим ЗЛАМАТИ ──
     if(selectedBuild==="__break"){
         const idx=getNearestBuilding();
-        if(idx===null){ showFloat("❌ Наведи на споруду"); return; }
+        if(idx===null){showFloat("❌ Наведи на споруду");return;}
         const b=placedBuildings[idx];
-        // Повертаємо частину ресурсів
         const def=BUILD_DEFS[b.type];
-        if(def){ Object.entries(def.cost).forEach(([k,v])=>inv[k]+=Math.floor(v*0.5)); }
+        if(def){Object.entries(def.cost).forEach(([k,v])=>inv[k]+=Math.floor(v*0.5));}
         scene.remove(b.mesh);
         placedBuildings.splice(idx,1);
-        broadcast({type:"build_remove", idx});
+        broadcast({type:"build_remove",idx});
         showFloat("💥 Зламано! Повернено 50% ресурсів");
-        renderInv();
-        return;
+        renderInv(); return;
     }
-
-    // ── Режим ПЕРЕМІСТИТИ ──
     if(selectedBuild==="__move"){
         if(!movingBuilding){
             const idx=getNearestBuilding();
-            if(idx===null){ showFloat("❌ Наведи на споруду"); return; }
+            if(idx===null){showFloat("❌ Наведи на споруду");return;}
             movingBuilding=idx;
             placedBuildings[idx].mesh.material.emissive=new THREE.Color(0x4fc3f7);
             placedBuildings[idx].mesh.material.emissiveIntensity=0.5;
             showFloat("↔️ Тепер постав на нове місце");
         } else {
-            // Ставимо на нове місце
             const b=placedBuildings[movingBuilding];
             b.mesh.material.emissive=new THREE.Color(0x000000);
             b.mesh.material.emissiveIntensity=0;
-            const nx=camera.position.x - Math.sin(yaw)*2.5;
-            const nz=camera.position.z - Math.cos(yaw)*2.5;
+            const nx=camera.position.x-Math.sin(yaw)*2.5;
+            const nz=camera.position.z-Math.cos(yaw)*2.5;
             const ny=getH(nx,nz)+BUILD_DEFS[b.type].h/2;
-            b.mesh.position.set(nx,ny,nz);
-            b.x=nx; b.y=ny; b.z=nz;
-            broadcast({type:"build_move", idx:movingBuilding, x:nx, y:ny, z:nz});
-            movingBuilding=null;
-            showFloat("✅ Переміщено!");
+            b.mesh.position.set(nx,ny,nz); b.x=nx; b.y=ny; b.z=nz;
+            broadcast({type:"build_move",idx:movingBuilding,x:nx,y:ny,z:nz});
+            movingBuilding=null; showFloat("✅ Переміщено!");
         }
         return;
     }
-
-    // ── Режим БУДІВНИЦТВО ──
     if(!ghostMesh) return;
-    const def=BUILD_DEFS[selectedBuild];
-    if(!def) return;
+    const def=BUILD_DEFS[selectedBuild]; if(!def) return;
     const canBuild=Object.entries(def.cost).every(([k,v])=>inv[k]>=v);
-    if(!canBuild){ showFloat("❌ Не вистачає: "+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>k+"×"+(v-inv[k])).join(", ")); return; }
+    if(!canBuild){showFloat("❌ Не вистачає: "+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>k+"×"+(v-inv[k])).join(", "));return;}
     Object.entries(def.cost).forEach(([k,v])=>inv[k]-=v);
-    const bx=ghostMesh.position.x, by=ghostMesh.position.y, bz=ghostMesh.position.z, bry=ghostMesh.rotation.y;
-    spawnBuilding(selectedBuild, bx, by, bz, bry);
-    broadcast({type:"build", btype:selectedBuild, x:bx, y:by, z:bz, ry:bry});
-    showFloat("🏗️ "+def.label+" збудована!");
-    renderInv();
+    const bx=ghostMesh.position.x,by=ghostMesh.position.y,bz=ghostMesh.position.z,bry=ghostMesh.rotation.y;
+    spawnBuilding(selectedBuild,bx,by,bz,bry);
+    broadcast({type:"build",btype:selectedBuild,x:bx,y:by,z:bz,ry:bry});
+    showFloat("🏗️ "+def.label+" збудована!"); renderInv();
 }
 
-function spawnBuilding(type, x, y, z, ry){
+function spawnBuilding(type,x,y,z,ry){
     const def=BUILD_DEFS[type];
-    const mat=new THREE.MeshStandardMaterial({color:def.color, roughness:0.9});
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),mat);
-    mesh.position.set(x,y,z); mesh.rotation.y=ry;
-    mesh.castShadow=true; mesh.receiveShadow=true;
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),new THREE.MeshStandardMaterial({color:def.color,roughness:0.9}));
+    mesh.position.set(x,y,z); mesh.rotation.y=ry; mesh.castShadow=true; mesh.receiveShadow=true;
     scene.add(mesh);
     placedBuildings.push({mesh,type,x,y,z,ry});
-
-    // Для дверей — вирізаємо отвір (темний прямокутник)
     if(type==="door"){
-        const hole=new THREE.Mesh(
-            new THREE.BoxGeometry(0.9,2.4,0.5),
-            new THREE.MeshStandardMaterial({color:0x111111})
-        );
+        const hole=new THREE.Mesh(new THREE.BoxGeometry(0.9,2.4,0.5),new THREE.MeshStandardMaterial({color:0x111111}));
         hole.position.set(x,y-0.2,z); hole.rotation.y=ry; scene.add(hole);
     }
 }
@@ -855,21 +866,21 @@ function spawnBuilding(type, x, y, z, ry){
 // ══════════════════════════════════════════════════════════════
 const inv={wood:0,stone:0,metal:0,fiber:0,coal:0,food:0,meat:0,axe:0,spear:0,sword:0,bow:0,arrow:0};
 const RECIPES=[
-    {id:"axe",   name:"Сокира",  icon:"🪓", cost:{wood:5,stone:3},             desc:"Рубає дерева"},
-    {id:"spear", name:"Спис",    icon:"🗡️", cost:{wood:4,stone:2},             desc:"Ближній бій 25dmg"},
-    {id:"sword", name:"Меч",     icon:"⚔️", cost:{wood:2,stone:1,metal:4},     desc:"Сильний удар 40dmg"},
-    {id:"bow",   name:"Лук",     icon:"🏹", cost:{wood:6,fiber:4},             desc:"Дальній бій"},
-    {id:"arrow", name:"Стріли×5",icon:"🪃", cost:{wood:2,stone:1},             desc:"Для лука",gives:{arrow:5}},
-    {id:"food",  name:"Їжа ×3",  icon:"🍖", cost:{wood:2},                     desc:"Відновлює голод",gives:{food:3}},
-    {id:"food",  name:"М'ясо смажене",icon:"🥩",cost:{meat:1,coal:1},          desc:"+40 HP +голод",gives:{food:2},heals:40,id2:"cooked_meat"},
+    {id:"axe",   name:"Сокира",  icon:"🪓", cost:{wood:5,stone:3},         desc:"Рубає дерева"},
+    {id:"spear", name:"Спис",    icon:"🗡️", cost:{wood:4,stone:2},         desc:"Ближній бій 25dmg"},
+    {id:"sword", name:"Меч",     icon:"⚔️", cost:{wood:2,stone:1,metal:4}, desc:"Сильний удар 40dmg"},
+    {id:"bow",   name:"Лук",     icon:"🏹", cost:{wood:6,fiber:4},         desc:"Дальній бій"},
+    {id:"arrow", name:"Стріли×5",icon:"🪃", cost:{wood:2,stone:1},         desc:"Для лука", gives:{arrow:5}},
+    {id:"food",  name:"Їжа ×3",  icon:"🍖", cost:{wood:2},                 desc:"Відновлює голод", gives:{food:3}},
+    {id:"food",  name:"Смажене м'ясо",icon:"🥩",cost:{meat:1,coal:1},      desc:"+40 HP", gives:{food:2}, heals:40},
 ];
 
 function renderInv(){
     const grid=document.getElementById("invGrid"); grid.innerHTML="";
     [{key:"wood",icon:"🪵"},{key:"stone",icon:"🪨"},{key:"metal",icon:"⚙️"},{key:"fiber",icon:"🌿"},
-      {key:"coal",icon:"🪨"},{key:"food",icon:"🍖"},{key:"meat",icon:"🥩"},
-      {key:"axe",icon:"🪓"},{key:"spear",icon:"🗡️"},{key:"sword",icon:"⚔️"},
-      {key:"bow",icon:"🏹"},{key:"arrow",icon:"🪃"}].forEach(it=>{
+     {key:"coal",icon:"🪨"},{key:"food",icon:"🍖"},{key:"meat",icon:"🥩"},
+     {key:"axe",icon:"🪓"},{key:"spear",icon:"🗡️"},{key:"sword",icon:"⚔️"},
+     {key:"bow",icon:"🏹"},{key:"arrow",icon:"🪃"}].forEach(it=>{
         const d=document.createElement("div"); d.className="slot";
         d.innerHTML=`<span>${it.icon}</span><div class="cnt">${inv[it.key]}</div>`; grid.appendChild(d);
     });
@@ -883,6 +894,7 @@ function renderInv(){
             e.stopPropagation(); if(!can) return;
             Object.entries(r.cost).forEach(([k,v])=>inv[k]-=v);
             if(r.gives) Object.entries(r.gives).forEach(([k,v])=>inv[k]+=v); else inv[r.id]++;
+            if(r.heals){ playerHP=Math.min(playerMaxHP,playerHP+r.heals); updateHPUI(); }
             showFloat(`✅ ${r.icon} ${r.name}!`); renderInv();
         }); cl.appendChild(d);
     });
@@ -894,14 +906,21 @@ document.getElementById("invBtn").addEventListener("click",()=>{ const o=invPane
 //  HP / HUNGER
 // ══════════════════════════════════════════════════════════════
 let playerHP=100, playerMaxHP=100, hunger=100, isDead=false;
-const charSpeed = () => myChar==="female" ? 0.14 : 0.12;
-const charDmg   = () => myChar==="male"   ? 15   : 10;
+
+function charConfig(){ return CHAR_CONFIGS[myChar]||CHAR_CONFIGS.male; }
+const charSpeed = () => charConfig().speed;
+const charDmg   = () => charConfig().dmg;
 
 function updateHPUI(){ const p=(playerHP/playerMaxHP)*100; document.getElementById("hpBar").style.width=p+"%"; document.getElementById("hpBar").style.background=p>60?"#4caf50":p>30?"#ff9800":"#e53935"; document.getElementById("hpNum").textContent=Math.max(0,Math.round(playerHP)); document.getElementById("hungerBar").style.width=hunger+"%"; }
 function takeDamage(d){ if(isDead)return; playerHP=Math.max(0,playerHP-d); updateHPUI(); showFloat("💔 -"+d); if(playerHP<=0) die(); }
 function eatFood(){ if(inv.food<=0){showFloat("❌ Немає їжі");return;} inv.food--; hunger=Math.min(100,hunger+35); playerHP=Math.min(playerMaxHP,playerHP+15); updateHPUI(); showFloat("🍖 +15 HP"); renderInv(); }
 function die(){ isDead=true; document.getElementById("deathScreen").style.display="flex"; }
-document.getElementById("respawnBtn").addEventListener("click",()=>{ playerHP=playerMaxHP; hunger=100; inv.wood=inv.stone=inv.metal=inv.fiber=inv.coal=inv.food=inv.meat=inv.axe=inv.spear=inv.sword=inv.bow=inv.arrow=0; camera.position.set(Math.random()*20-10,5,Math.random()*20-10); isDead=false; document.getElementById("deathScreen").style.display="none"; updateHPUI(); });
+document.getElementById("respawnBtn").addEventListener("click",()=>{
+    playerHP=playerMaxHP; hunger=100;
+    inv.wood=inv.stone=inv.metal=inv.fiber=inv.coal=inv.food=inv.meat=inv.axe=inv.spear=inv.sword=inv.bow=inv.arrow=0;
+    camera.position.set(Math.random()*20-10,5,Math.random()*20-10);
+    isDead=false; document.getElementById("deathScreen").style.display="none"; updateHPUI();
+});
 function updateHunger(dt){ hunger=Math.max(0,hunger-dt*1.2); if(hunger<=0){playerHP=Math.max(0,playerHP-dt*2);updateHPUI();if(playerHP<=0)die();} document.getElementById("hungerBar").style.width=hunger+"%"; }
 
 // ══════════════════════════════════════════════════════════════
@@ -914,13 +933,11 @@ function showFloat(msg){ const el=document.getElementById("floatMsg"); el.textCo
 //  RAYCASTER
 // ══════════════════════════════════════════════════════════════
 const ray=new THREE.Raycaster(), CENTER=new THREE.Vector2(0,0);
-let tTree=null, tRock=null, tPlayer=null;
+let tTree=null, tRock=null, tPlayer=null, tPlant=null;
 
-let tScyth=null, tPlant=null;
 function castRay(){
-    ray.setFromCamera(CENTER,camera); tTree=null; tRock=null; tPlayer=null; tScyth=null; tPlant=null;
+    ray.setFromCamera(CENTER,camera); tTree=null; tRock=null; tPlayer=null; tPlant=null;
     for(const [pid,rp] of Object.entries(remotePlayers)){ const h=ray.intersectObject(rp.mesh,true); if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;} }
-    for(const s of scythians){ if(!s.alive)continue; const h=ray.intersectObject(s.group,true); if(h.length&&h[0].distance<9){tScyth=s;return;} }
     for(const t of trees){ if(!t.alive)continue; const h=ray.intersectObject(t.group,true); if(h.length&&h[0].distance<9){tTree=t;return;} }
     for(const r of rocks){ const h=ray.intersectObject(r.mesh,true); if(h.length&&h[0].distance<7){tRock=r;return;} }
     for(const p of plants){ if(!p.alive)continue; const h=ray.intersectObject(p.mesh,true); if(h.length&&h[0].distance<5){tPlant=p;return;} }
@@ -928,7 +945,6 @@ function castRay(){
 const tHPEl=document.getElementById("targetHP"),tHPBar=document.getElementById("targetHPBar");
 function updateTargetHP(t){ if(!t){tHPEl.style.display="none";return;} tHPEl.style.display="block"; const p=(t.hp/t.maxHp)*100; tHPBar.style.width=p+"%"; tHPBar.style.background=p>60?"#4caf50":p>30?"#ff9800":"#f44336"; }
 
-// ── Shake/Fell ──
 function shake(mesh){ const o=mesh.position.clone(); let t=0; (function s(){ t+=0.08; mesh.position.x=o.x+Math.sin(t*30)*0.08*Math.exp(-t*3); if(t<1.2)requestAnimationFrame(s); else mesh.position.copy(o); })(); }
 function fellTree(t){ t.alive=false; const dir=Math.random()>0.5?1:-1,start=performance.now(); (function fall(){ const a=Math.min((performance.now()-start)/1000*1.8,Math.PI/2); t.group.rotation.z=dir*a; if(a<Math.PI/2)requestAnimationFrame(fall); else setTimeout(()=>{t.group.rotation.z=0;t.hp=t.maxHp;t.alive=true;},10000); })(); const got=2+Math.floor(Math.random()*3); inv.wood+=got; showFloat("🪵 +"+got); broadcast({type:"tree_fell",id:t.id,dir}); }
 
@@ -942,7 +958,6 @@ function doAction(){
     const now=performance.now(); if(now-lastAction<600) return; lastAction=now;
     castRay();
     if(tPlayer){ const dmg=inv.sword>0?40:inv.spear>0?25:charDmg(); broadcast({type:"pvp_hit",target:tPlayer.pid,dmg,from:myNick}); showFloat("⚔️ -"+dmg); return; }
-    if(tScyth){ hitScythian(tScyth); return; }
     if(tTree){ shake(tTree.group); tTree.hp--; if(tTree.hp<=0) fellTree(tTree); return; }
     if(tRock){ shake(tRock.mesh); inv.stone+=1+(inv.axe>0?1:0); if(Math.random()<0.15){inv.metal++;showFloat("🪨 +1 ⚙️ метал!");} else showFloat("🪨 +1"); return; }
     if(tPlant){ tPlant.alive=false; tPlant.mesh.visible=false; inv.fiber+=1+Math.floor(Math.random()*2); showFloat("🌿 +клітковина"); setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.mesh.visible=true;}},15000); return; }
@@ -996,52 +1011,30 @@ function handleMsg(pid,raw){
         case "hello":
             addRemotePlayer(pid, data.nick, data.char);
             if(isHost){
-                const welcome=JSON.stringify({
-                    type:"welcome", hostId:myId, hostNick:myNick, hostChar:myChar,
-                    players:Object.entries(remotePlayers).filter(([id])=>id!==pid).map(([id,p])=>({id,nick:p.nick,char:p.charType}))
-                });
+                const welcome=JSON.stringify({type:"welcome",hostId:myId,hostNick:myNick,hostChar:myChar,players:Object.entries(remotePlayers).filter(([id])=>id!==pid).map(([id,p])=>({id,nick:p.nick,char:p.charType}))});
                 try{clientConns[pid].send(welcome);}catch(e){}
-                Object.entries(clientConns).forEach(([id,c])=>{
-                    if(id!==pid) try{c.send(JSON.stringify({type:"hello_fwd",nick:data.nick,char:data.char,pid}));}catch(e){}
-                });
-                // Надсилаємо нову людину всі існуючі будівлі
-                if(placedBuildings.length){
-                    const bMsg=JSON.stringify({type:"buildings_sync",buildings:placedBuildings.map(b=>({btype:b.type,x:b.x,y:b.y,z:b.z,ry:b.ry}))});
-                    try{clientConns[pid].send(bMsg);}catch(e){}
-                }
+                Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(JSON.stringify({type:"hello_fwd",nick:data.nick,char:data.char,pid}));}catch(e){}});
+                if(placedBuildings.length){const bMsg=JSON.stringify({type:"buildings_sync",buildings:placedBuildings.map(b=>({btype:b.type,x:b.x,y:b.y,z:b.z,ry:b.ry}))});try{clientConns[pid].send(bMsg);}catch(e){}}
             }
             break;
-        case "hello_fwd": addRemotePlayer(data.pid, data.nick, data.char); break;
+        case "hello_fwd": addRemotePlayer(data.pid,data.nick,data.char); break;
         case "welcome":
-            if(data.hostId && data.hostId!==myId) addRemotePlayer(data.hostId, data.hostNick, data.hostChar);
-            data.players.forEach(p=>addRemotePlayer(p.id, p.nick, p.char));
+            if(data.hostId&&data.hostId!==myId) addRemotePlayer(data.hostId,data.hostNick,data.hostChar);
+            data.players.forEach(p=>addRemotePlayer(p.id,p.nick,p.char));
             break;
         case "pos":
             if(remotePlayers[pid]){remotePlayers[pid].x=data.x;remotePlayers[pid].y=data.y;remotePlayers[pid].z=data.z;remotePlayers[pid].yaw=data.yaw||0;}
-            if(isHost){const fwd=JSON.stringify({type:"pos_fwd",pid,x:data.x,y:data.y,z:data.z,yaw:data.yaw||0}); Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
+            if(isHost){const fwd=JSON.stringify({type:"pos_fwd",pid,x:data.x,y:data.y,z:data.z,yaw:data.yaw||0});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
             break;
         case "pos_fwd": if(remotePlayers[data.pid]){remotePlayers[data.pid].x=data.x;remotePlayers[data.pid].y=data.y;remotePlayers[data.pid].z=data.z;remotePlayers[data.pid].yaw=data.yaw||0;} break;
         case "host_pos": if(remotePlayers[data.pid]){remotePlayers[data.pid].x=data.x;remotePlayers[data.pid].y=data.y;remotePlayers[data.pid].z=data.z;remotePlayers[data.pid].yaw=data.yaw||0;} break;
         case "chat": addChat(data.nick,data.msg); if(isHost){const fwd=JSON.stringify(data);Object.values(clientConns).forEach(c=>{try{c.send(fwd);}catch(e){}});} break;
         case "pvp_hit": if(data.target===myId){takeDamage(data.dmg);addChat("⚔️",data.from+" атакував тебе на "+data.dmg+" HP!");} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
         case "tree_fell": if(trees[data.id]){trees[data.id].alive=false;trees[data.id].group.rotation.z=data.dir*Math.PI/2;setTimeout(()=>{trees[data.id].group.rotation.z=0;trees[data.id].hp=trees[data.id].maxHp;trees[data.id].alive=true;},10000);} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
-        case "build":
-            spawnBuilding(data.btype,data.x,data.y,data.z,data.ry);
-            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
-            break;
-        case "build_remove":
-            if(placedBuildings[data.idx]){scene.remove(placedBuildings[data.idx].mesh);placedBuildings.splice(data.idx,1);}
-            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
-            break;
-        case "build_move":
-            if(placedBuildings[data.idx]){const b=placedBuildings[data.idx];b.mesh.position.set(data.x,data.y,data.z);b.x=data.x;b.y=data.y;b.z=data.z;}
-            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
-            break;
+        case "build": spawnBuilding(data.btype,data.x,data.y,data.z,data.ry); if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
+        case "build_remove": if(placedBuildings[data.idx]){scene.remove(placedBuildings[data.idx].mesh);placedBuildings.splice(data.idx,1);} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
+        case "build_move": if(placedBuildings[data.idx]){const b=placedBuildings[data.idx];b.mesh.position.set(data.x,data.y,data.z);b.x=data.x;b.y=data.y;b.z=data.z;} if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
         case "buildings_sync": data.buildings.forEach(b=>spawnBuilding(b.btype,b.x,b.y,b.z,b.ry)); break;
-        case "scythian_hit":
-            if(data.target===myId){ takeDamage(data.dmg); showFloat("🗡️ Скіф атакував! -"+data.dmg); }
-            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
-            break;
         case "bye": removeRemotePlayer(pid); if(isHost){const fwd=JSON.stringify({type:"bye_fwd",pid});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
         case "bye_fwd": removeRemotePlayer(data.pid); break;
         case "full": setStatus("❌ Кімната заповнена!"); break;
@@ -1049,56 +1042,22 @@ function handleMsg(pid,raw){
 }
 
 function setupPeer(id, cb){
-    // Використовуємо офіційний PeerJS сервер — найнадійніший варіант
     myPeer = new Peer(id);
-
-    myPeer.on("open", realId => {
-        myId = realId;
-        console.log("PeerJS connected, ID:", realId);
-        setStatus("✅ ID: " + realId);
-        if(cb) cb(realId);
-    });
-
+    myPeer.on("open", realId => { myId=realId; setStatus("✅ ID: "+realId); if(cb) cb(realId); });
     myPeer.on("connection", conn => {
-        // Хост отримує нове з'єднання
         conn.on("open", () => {
             if(!isHost) return;
-            if(Object.keys(clientConns).length >= 5){
-                conn.send(JSON.stringify({type:"full"}));
-                conn.close();
-                return;
-            }
-            console.log("New client connected:", conn.peer);
-            clientConns[conn.peer] = conn;
-            conn.on("data", data => {
-                // PeerJS може передавати як string так і object
-                const raw = typeof data === "object" ? JSON.stringify(data) : data;
-                handleMsg(conn.peer, raw);
-            });
-            conn.on("close", () => {
-                console.log("Client disconnected:", conn.peer);
-                handleMsg(conn.peer, JSON.stringify({type:"bye"}));
-                delete clientConns[conn.peer];
-                updatePlayerCount();
-            });
-            conn.on("error", e => console.error("conn error:", e));
+            if(Object.keys(clientConns).length>=5){ conn.send(JSON.stringify({type:"full"})); conn.close(); return; }
+            clientConns[conn.peer]=conn;
+            conn.on("data", data=>{ const raw=typeof data==="object"?JSON.stringify(data):data; handleMsg(conn.peer,raw); });
+            conn.on("close",()=>{ handleMsg(conn.peer,JSON.stringify({type:"bye"})); delete clientConns[conn.peer]; updatePlayerCount(); });
         });
     });
-
-    myPeer.on("disconnected", () => {
-        console.log("PeerJS disconnected, reconnecting...");
-        myPeer.reconnect();
-    });
-
-    myPeer.on("error", err => {
-        console.error("PeerJS error:", err.type, err);
-        if(err.type === "unavailable-id"){
-            setupPeer("tf-" + Math.random().toString(36).slice(2,10), cb);
-        } else if(err.type === "peer-unavailable"){
-            setStatus("❌ Кімнату не знайдено. Перевір ID.");
-        } else {
-            setStatus("❌ " + err.type + ": " + err.message);
-        }
+    myPeer.on("disconnected",()=>myPeer.reconnect());
+    myPeer.on("error",err=>{
+        if(err.type==="unavailable-id") setupPeer("tf-"+Math.random().toString(36).slice(2,10),cb);
+        else if(err.type==="peer-unavailable") setStatus("❌ Кімнату не знайдено.");
+        else setStatus("❌ "+err.type);
     });
 }
 
@@ -1119,7 +1078,7 @@ async function refreshRooms(){
         list.innerHTML="";
         active.forEach(([id,r])=>{
             const d=document.createElement("div"); d.className="room";
-            const ico=r.char==="female"?"👩":"🧑";
+            const ico=CHAR_ICONS[r.char]||"🧑";
             d.innerHTML=`<div>${ico} <b>${r.nick}</b>'s World</div><div style="font-size:12px;color:#81c784">👥 ${r.count||1}/6</div>`;
             d.addEventListener("click",()=>joinRoom(id,r.nick)); list.appendChild(d);
         });
@@ -1128,71 +1087,40 @@ async function refreshRooms(){
 }
 
 function createRoom(){
-    roomId = "tf-" + Math.random().toString(36).slice(2,9);
-    isHost = true;
+    roomId="tf-"+Math.random().toString(36).slice(2,9); isHost=true;
     setStatus("⏳ Створюємо кімнату...");
-    document.getElementById("createBtn").disabled = true;
-
-    setupPeer(roomId, () => {
-        console.log("Room created with ID:", roomId);
-        setStatus("✅ Кімната: " + roomId);
-        announceRoom(roomId, myNick, 1);
-        announceInterval = setInterval(() =>
-            announceRoom(roomId, myNick, 1 + Object.keys(clientConns).length), 15000);
+    document.getElementById("createBtn").disabled=true;
+    setupPeer(roomId,()=>{
+        setStatus("✅ Кімната: "+roomId);
+        announceRoom(roomId,myNick,1);
+        announceInterval=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length),15000);
         startGame();
     });
 }
 
-function joinRoom(id, hostNick){
-    // Чистимо ID від пробілів (частий баг при ручному введенні)
-    id = id.trim().toLowerCase();
-    roomId = id; isHost = false;
-    setStatus("🔗 Підключаємось до " + id + "...");
-    document.getElementById("createBtn").disabled = true;
-
-    setupPeer("tf-" + Math.random().toString(36).slice(2,12), () => {
-        console.log("Connecting to host:", id);
-        hostConn = myPeer.connect(id, { reliable: true });
-
-        let connected = false;
-
-        hostConn.on("open", () => {
-            connected = true;
-            console.log("Connected to host!");
-            setStatus("✅ Підключено!");
-            hostConn.send(JSON.stringify({type:"hello", nick:myNick, char:myChar}));
-            startGame();
-        });
-
-        hostConn.on("data", data => {
-            const raw = typeof data === "object" ? JSON.stringify(data) : data;
-            handleMsg(id, raw);
-        });
-
-        hostConn.on("close", () => {
-            addChat("🔌", "Хост відключився");
-        });
-
-        hostConn.on("error", e => {
-            console.error("hostConn error:", e);
-            setStatus("❌ Помилка з'єднання: " + e);
-        });
-
-        // Таймаут якщо не підключились за 8 сек
-        setTimeout(() => {
-            if(!connected){
-                setStatus("❌ Не вдалось підключитись. Перевір ID і спробуй ще раз.");
-                document.getElementById("createBtn").disabled = false;
-            }
-        }, 8000);
+function joinRoom(id,hostNick){
+    id=id.trim().toLowerCase(); roomId=id; isHost=false;
+    setStatus("🔗 Підключаємось до "+id+"...");
+    document.getElementById("createBtn").disabled=true;
+    setupPeer("tf-"+Math.random().toString(36).slice(2,12),()=>{
+        hostConn=myPeer.connect(id,{reliable:true});
+        let connected=false;
+        hostConn.on("open",()=>{ connected=true; setStatus("✅ Підключено!"); hostConn.send(JSON.stringify({type:"hello",nick:myNick,char:myChar})); startGame(); });
+        hostConn.on("data",data=>{ const raw=typeof data==="object"?JSON.stringify(data):data; handleMsg(id,raw); });
+        hostConn.on("close",()=>addChat("🔌","Хост відключився"));
+        setTimeout(()=>{ if(!connected){ setStatus("❌ Не вдалось підключитись."); document.getElementById("createBtn").disabled=false; } },8000);
     });
 }
 
 function startGame(){
+    // Застосувати стат персонажа
+    const cfg=charConfig();
+    playerMaxHP=cfg.maxHP; playerHP=cfg.maxHP;
+
     document.getElementById("lobby").style.display="none";
     document.getElementById("game").style.display="block";
-    addChat("🏠", isHost ? `Ти хост. ID: ${roomId}` : "Підключено!");
-    addChat("💡","🔨 = будівництво | 🪓 тап = удар | тримай = їжа");
+    addChat("🏠", isHost?`Ти хост. ID: ${roomId}`:"Підключено!");
+    addChat("💡","🔨 = будівництво | тап 🪓 = удар | тримай = їжа");
     updateHPUI(); gameLoop();
 }
 
@@ -1207,39 +1135,27 @@ function gameLoop(){
 
     if(!isDead){
         camera.rotation.order="YXZ"; camera.rotation.y=yaw; camera.rotation.x=pitch;
-        if(isMoving){camera.position.x-=Math.sin(yaw)*charSpeed();camera.position.z-=Math.cos(yaw)*charSpeed();}
+        if(isMoving){ camera.position.x-=Math.sin(yaw)*charSpeed(); camera.position.z-=Math.cos(yaw)*charSpeed(); }
         camera.position.y+=(getH(camera.position.x,camera.position.z)+1.9-camera.position.y)*0.18;
-        updateHunger(dt); updateSky(dt); updateScythians(dt);
-        if(!buildMode){
-            castRay();
-            if(tScyth) updateTargetHPScyth(tScyth);
-            else updateTargetHP(tTree);
-        }
+        updateHunger(dt); updateSky(dt);
+        if(!buildMode){ castRay(); updateTargetHP(tTree); }
         else { updateGhost(); tHPEl.style.display="none"; }
 
-        // Синхронізація позиції
         if(now-lastSync>100){
             lastSync=now;
             const pd={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw,pid:myId};
-            if(isHost){
-                const msg=JSON.stringify({type:"host_pos",...pd});
-                Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});
-            } else if(hostConn){
-                try{hostConn.send(JSON.stringify({type:"pos",...pd}));}catch(e){}
-            }
+            if(isHost){const msg=JSON.stringify({type:"host_pos",...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}
+            else if(hostConn){try{hostConn.send(JSON.stringify({type:"pos",...pd}));}catch(e){}}
         }
     }
 
-    // Remote players: оновлюємо позиції mesh + labels
+    // Remote players
     for(const [pid,rp] of Object.entries(remotePlayers)){
-        rp.mesh.position.set(rp.x, rp.y-0.8, rp.z);
-        rp.mesh.rotation.y = rp.yaw + Math.PI;
+        rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);
+        rp.mesh.rotation.y=rp.yaw+Math.PI;
         const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z); p3.project(camera);
-        if(p3.z<1){
-            rp.labelEl.style.left=((p3.x*0.5+0.5)*innerWidth)+"px";
-            rp.labelEl.style.top=((-p3.y*0.5+0.5)*innerHeight)+"px";
-            rp.labelEl.style.display="block";
-        } else rp.labelEl.style.display="none";
+        if(p3.z<1){ rp.labelEl.style.left=((p3.x*0.5+0.5)*innerWidth)+"px"; rp.labelEl.style.top=((-p3.y*0.5+0.5)*innerHeight)+"px"; rp.labelEl.style.display="block"; }
+        else rp.labelEl.style.display="none";
     }
 
     renderer.render(scene,camera);
