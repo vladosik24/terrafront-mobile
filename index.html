@@ -272,13 +272,15 @@ canvas { display:block; }
 
     <!-- Build bar -->
     <div id="buildBar">
-        <div class="buildSlot sel" data-build="wall"   onclick="selectBuild('wall')"  ><span>🧱</span><div class="bname">Стіна</div></div>
-        <div class="buildSlot"    data-build="floor"   onclick="selectBuild('floor')" ><span>🟫</span><div class="bname">Підлога</div></div>
-        <div class="buildSlot"    data-build="door"    onclick="selectBuild('door')"  ><span>🚪</span><div class="bname">Двері</div></div>
-        <div class="buildSlot"    data-build="roof"    onclick="selectBuild('roof')"  ><span>🔺</span><div class="bname">Дах</div></div>
-        <div class="buildSlot"    data-build="stairs"  onclick="selectBuild('stairs')"><span>🪜</span><div class="bname">Сходи</div></div>
-        <div class="buildSlot"    data-build="tower"   onclick="selectBuild('tower')" ><span>🗼</span><div class="bname">Вежа</div></div>
+        <div class="buildSlot sel" data-build="wall"    onclick="selectBuild('wall')"   ><span>🧱</span><div class="bname">Стіна</div></div>
+        <div class="buildSlot"    data-build="floor"    onclick="selectBuild('floor')"  ><span>🟫</span><div class="bname">Підлога</div></div>
+        <div class="buildSlot"    data-build="door"     onclick="selectBuild('door')"   ><span>🚪</span><div class="bname">Двері</div></div>
+        <div class="buildSlot"    data-build="roof"     onclick="selectBuild('roof')"   ><span>🔺</span><div class="bname">Дах</div></div>
+        <div class="buildSlot"    data-build="stairs"   onclick="selectBuild('stairs')" ><span>🪜</span><div class="bname">Сходи</div></div>
+        <div class="buildSlot"    data-build="tower"    onclick="selectBuild('tower')"  ><span>🗼</span><div class="bname">Вежа</div></div>
         <div class="buildSlot"    data-build="campfire" onclick="selectBuild('campfire')"><span>🔥</span><div class="bname">Вогнище</div></div>
+        <div class="buildSlot"    data-build="__break"  onclick="selectBuild('__break')"><span>💥</span><div class="bname">Зламати</div></div>
+        <div class="buildSlot"    data-build="__move"   onclick="selectBuild('__move')" ><span>↔️</span><div class="bname">Перемістити</div></div>
     </div>
     <div id="buildModeBtn" onclick="toggleBuildMode()" title="Будівництво">🔨</div>
 
@@ -423,7 +425,7 @@ const moon=new THREE.DirectionalLight(0x8899cc,0.0); moon.position.set(-60,-40,-
 // ── Day/Night ──
 let gameTime=0.3;
 function updateSky(dt){
-    gameTime=(gameTime+dt/120)%1; const t=gameTime;
+    gameTime=(gameTime+dt/480)%1; const t=gameTime;
     let skyC,sunI,ambI,moonI,phase;
     if(t<0.2){const p=t/0.2;skyC=new THREE.Color().setHSL(0.58,0.4,0.05+p*0.45);sunI=p*0.6;moonI=0.3*(1-p);ambI=0.05+p*0.3;phase="🌅 Світанок";}
     else if(t<0.5){const p=(t-0.2)/0.3;skyC=new THREE.Color(0x87a8c4);sunI=0.6+p*0.8;moonI=0;ambI=0.35;phase="☀️ День";}
@@ -474,6 +476,133 @@ for(let i=0;i<30;i++){
     const m=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),ROCK_MAT);
     m.position.set(x,h+s*0.4,z); m.rotation.set(sr()*6,sr()*6,sr()*6); m.castShadow=true;
     rocks.push({mesh:m,x,z,id:rocks.length}); scene.add(m);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  СКІФИ — AI ВОРОГИ
+// ══════════════════════════════════════════════════════════════
+const scythians = [];
+const SCYTH_BODY = new THREE.MeshStandardMaterial({color:0x8B4513,roughness:0.9});
+const SCYTH_SKIN = new THREE.MeshStandardMaterial({color:0xd2956a,roughness:0.9});
+const SCYTH_HAT  = new THREE.MeshStandardMaterial({color:0xc0392b,roughness:0.9});
+const SCYTH_WPAN = new THREE.MeshStandardMaterial({color:0x888888,roughness:0.5});
+
+function makeScythMesh(){
+    const g=new THREE.Group();
+    const torso=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,0.25),SCYTH_BODY); torso.position.y=0.05; g.add(torso);
+    [-0.13,0.13].forEach(ox=>{ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.08,0.65,6),SCYTH_BODY); leg.position.set(ox,-0.52,0); g.add(leg); });
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.38,0.32),SCYTH_SKIN); head.position.y=0.56; g.add(head);
+    const hat=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.2,0.45,8),SCYTH_HAT); hat.position.y=0.88; g.add(hat);
+    [-0.32,0.32].forEach(ox=>{ const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.06,0.5,6),SCYTH_BODY); arm.position.set(ox,0.02,0); arm.rotation.z=ox>0?0.3:-0.3; g.add(arm); });
+    const spear=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.6,6),SCYTH_WPAN); spear.position.set(0.45,-0.1,0); spear.rotation.z=0.2; g.add(spear);
+    g.traverse(ch=>{ if(ch.isMesh) ch.castShadow=true; });
+    return g;
+}
+
+function spawnScythian(x, z){
+    const h=getH(x,z);
+    const g=makeScythMesh();
+    g.position.set(x,h,z);
+    const maxHp=40+Math.floor(Math.random()*20);
+    const s={
+        group:g, hp:maxHp, maxHp, x, z,
+        alive:true, speed:0.015+Math.random()*0.015,
+        dmg:8+Math.floor(Math.random()*7), lastAtk:0,
+        state:"patrol", patrolAngle:Math.random()*Math.PI*2,
+        patrolTimer:2, hitFlash:0, id:scythians.length
+    };
+    scythians.push(s);
+    scene.add(g);
+    return s;
+}
+
+for(let i=0;i<12;i++){
+    const a=Math.random()*Math.PI*2, d=35+Math.random()*55;
+    spawnScythian(Math.cos(a)*d, Math.sin(a)*d);
+}
+
+// Рослини — джерело клітковини
+const plants=[];
+const PLANT_MAT=new THREE.MeshStandardMaterial({color:0x2ecc71,roughness:1});
+for(let i=0;i<50;i++){
+    const x=(sr()-0.5)*160,z=(sr()-0.5)*160,h=getH(x,z);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.6,5),PLANT_MAT);
+    stem.position.set(x,h+0.3,z);
+    [-0.25,0.25].forEach(ox=>{
+        const leaf=new THREE.Mesh(new THREE.SphereGeometry(0.18,5,4),PLANT_MAT);
+        leaf.position.set(x+ox,h+0.55,z); scene.add(leaf);
+    });
+    scene.add(stem);
+    plants.push({mesh:stem,x,z,alive:true});
+}
+
+function updateScythians(dt){
+    const now=performance.now();
+    const px=camera.position.x, pz=camera.position.z;
+    scythians.forEach(s=>{
+        if(!s.alive) return;
+        const dx=px-s.x, dz=pz-s.z;
+        const dist=Math.sqrt(dx*dx+dz*dz);
+        if(dist<20) s.state="chase"; else if(dist>32) s.state="patrol";
+
+        if(s.state==="patrol"){
+            s.patrolTimer-=dt;
+            if(s.patrolTimer<=0){ s.patrolAngle+=(Math.random()-0.5)*1.5; s.patrolTimer=2+Math.random()*3; }
+            s.x+=Math.cos(s.patrolAngle)*s.speed*0.4;
+            s.z+=Math.sin(s.patrolAngle)*s.speed*0.4;
+        } else {
+            const angle=Math.atan2(dx,dz);
+            s.x+=Math.sin(angle)*s.speed;
+            s.z+=Math.cos(angle)*s.speed;
+            s.group.rotation.y=angle;
+            if(dist<2.5 && now-s.lastAtk>2000 && !isDead){
+                s.lastAtk=now;
+                takeDamage(s.dmg);
+                shake(s.group);
+            }
+        }
+
+        s.group.position.x=s.x;
+        s.group.position.z=s.z;
+        s.group.position.y=getH(s.x,s.z)+Math.sin(now*0.005)*0.04;
+
+        // Flash при ударі
+        s.hitFlash=Math.max(0,s.hitFlash-dt);
+        const flash=s.hitFlash>0?1:0;
+        s.group.traverse(ch=>{ if(ch.isMesh&&ch.material.emissive) ch.material.emissive.setRGB(flash,0,0); });
+    });
+}
+
+function hitScythian(s){
+    const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();
+    s.hp-=dmg; s.hitFlash=0.25;
+    shake(s.group);
+    showFloat("⚔️ Скіф -"+dmg);
+    if(s.hp<=0) killScythian(s);
+    else updateTargetHPScyth(s);
+}
+
+function killScythian(s){
+    s.alive=false; scene.remove(s.group);
+    const drops=[];
+    if(Math.random()<0.7){ inv.meat+=1; drops.push("🥩"); }
+    if(Math.random()<0.5){ inv.metal+=1; drops.push("⚙️"); }
+    if(Math.random()<0.4){ inv.fiber+=1+Math.floor(Math.random()*2); drops.push("🌿"); }
+    if(Math.random()<0.25){ inv.coal+=1; drops.push("🪨"); }
+    showFloat("💀 Скіф! "+drops.join("")); renderInv();
+    setTimeout(()=>{
+        const a=Math.random()*Math.PI*2,d=35+Math.random()*55;
+        const ns=spawnScythian(Math.cos(a)*d,Math.sin(a)*d);
+        scythians[s.id]=ns; ns.id=s.id;
+    },30000);
+}
+
+function updateTargetHPScyth(s){
+    if(!s||!s.alive){ tHPEl.style.display="none"; return; }
+    tHPEl.style.display="block";
+    const p=(s.hp/s.maxHp)*100;
+    tHPBar.style.width=p+"%";
+    tHPBar.style.background=p>60?"#4caf50":p>30?"#ff9800":"#f44336";
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -629,20 +758,76 @@ function updateGhost(){
     }
 }
 
-function placeBuilding(){
-    if(!buildMode || !ghostMesh) return;
-    const def=BUILD_DEFS[selectedBuild];
-    // Перевіряємо ресурси
-    const canBuild=Object.entries(def.cost).every(([k,v])=>inv[k]>=v);
-    if(!canBuild){ showFloat("❌ Не вистачає ресурсів"); return; }
-    // Списуємо
-    Object.entries(def.cost).forEach(([k,v])=>inv[k]-=v);
+let movingBuilding = null; // будівля яку переміщуємо
 
-    const bx=ghostMesh.position.x, by=ghostMesh.position.y, bz=ghostMesh.position.z;
-    const bry=ghostMesh.rotation.y;
+function getNearestBuilding(maxDist=6){
+    let best=null, bestD=maxDist;
+    ray.setFromCamera(CENTER,camera);
+    for(let i=0;i<placedBuildings.length;i++){
+        const b=placedBuildings[i];
+        if(!b.mesh.parent) continue;
+        const hits=ray.intersectObject(b.mesh,false);
+        if(hits.length && hits[0].distance<bestD){ bestD=hits[0].distance; best=i; }
+    }
+    return best;
+}
+
+function placeBuilding(){
+    if(!buildMode) return;
+
+    // ── Режим ЗЛАМАТИ ──
+    if(selectedBuild==="__break"){
+        const idx=getNearestBuilding();
+        if(idx===null){ showFloat("❌ Наведи на споруду"); return; }
+        const b=placedBuildings[idx];
+        // Повертаємо частину ресурсів
+        const def=BUILD_DEFS[b.type];
+        if(def){ Object.entries(def.cost).forEach(([k,v])=>inv[k]+=Math.floor(v*0.5)); }
+        scene.remove(b.mesh);
+        placedBuildings.splice(idx,1);
+        broadcast({type:"build_remove", idx});
+        showFloat("💥 Зламано! Повернено 50% ресурсів");
+        renderInv();
+        return;
+    }
+
+    // ── Режим ПЕРЕМІСТИТИ ──
+    if(selectedBuild==="__move"){
+        if(!movingBuilding){
+            const idx=getNearestBuilding();
+            if(idx===null){ showFloat("❌ Наведи на споруду"); return; }
+            movingBuilding=idx;
+            placedBuildings[idx].mesh.material.emissive=new THREE.Color(0x4fc3f7);
+            placedBuildings[idx].mesh.material.emissiveIntensity=0.5;
+            showFloat("↔️ Тепер постав на нове місце");
+        } else {
+            // Ставимо на нове місце
+            const b=placedBuildings[movingBuilding];
+            b.mesh.material.emissive=new THREE.Color(0x000000);
+            b.mesh.material.emissiveIntensity=0;
+            const nx=camera.position.x - Math.sin(yaw)*2.5;
+            const nz=camera.position.z - Math.cos(yaw)*2.5;
+            const ny=getH(nx,nz)+BUILD_DEFS[b.type].h/2;
+            b.mesh.position.set(nx,ny,nz);
+            b.x=nx; b.y=ny; b.z=nz;
+            broadcast({type:"build_move", idx:movingBuilding, x:nx, y:ny, z:nz});
+            movingBuilding=null;
+            showFloat("✅ Переміщено!");
+        }
+        return;
+    }
+
+    // ── Режим БУДІВНИЦТВО ──
+    if(!ghostMesh) return;
+    const def=BUILD_DEFS[selectedBuild];
+    if(!def) return;
+    const canBuild=Object.entries(def.cost).every(([k,v])=>inv[k]>=v);
+    if(!canBuild){ showFloat("❌ Не вистачає: "+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>k+"×"+(v-inv[k])).join(", ")); return; }
+    Object.entries(def.cost).forEach(([k,v])=>inv[k]-=v);
+    const bx=ghostMesh.position.x, by=ghostMesh.position.y, bz=ghostMesh.position.z, bry=ghostMesh.rotation.y;
     spawnBuilding(selectedBuild, bx, by, bz, bry);
     broadcast({type:"build", btype:selectedBuild, x:bx, y:by, z:bz, ry:bry});
-    showFloat(`🏗️ ${def.label} збудована!`);
+    showFloat("🏗️ "+def.label+" збудована!");
     renderInv();
 }
 
@@ -668,16 +853,23 @@ function spawnBuilding(type, x, y, z, ry){
 // ══════════════════════════════════════════════════════════════
 //  INVENTORY & CRAFT
 // ══════════════════════════════════════════════════════════════
-const inv={wood:0,stone:0,food:0,axe:0,spear:0};
+const inv={wood:0,stone:0,metal:0,fiber:0,coal:0,food:0,meat:0,axe:0,spear:0,sword:0,bow:0,arrow:0};
 const RECIPES=[
-    {id:"axe",  name:"Сокира",icon:"🪓",cost:{wood:5,stone:3},desc:"Рубає швидше"},
-    {id:"spear",name:"Спис",  icon:"🗡️",cost:{wood:4,stone:2},desc:"Атака гравців"},
-    {id:"food", name:"Їжа ×3",icon:"🍖",cost:{wood:2},        desc:"Відновлює голод",gives:{food:3}},
+    {id:"axe",   name:"Сокира",  icon:"🪓", cost:{wood:5,stone:3},             desc:"Рубає дерева"},
+    {id:"spear", name:"Спис",    icon:"🗡️", cost:{wood:4,stone:2},             desc:"Ближній бій 25dmg"},
+    {id:"sword", name:"Меч",     icon:"⚔️", cost:{wood:2,stone:1,metal:4},     desc:"Сильний удар 40dmg"},
+    {id:"bow",   name:"Лук",     icon:"🏹", cost:{wood:6,fiber:4},             desc:"Дальній бій"},
+    {id:"arrow", name:"Стріли×5",icon:"🪃", cost:{wood:2,stone:1},             desc:"Для лука",gives:{arrow:5}},
+    {id:"food",  name:"Їжа ×3",  icon:"🍖", cost:{wood:2},                     desc:"Відновлює голод",gives:{food:3}},
+    {id:"food",  name:"М'ясо смажене",icon:"🥩",cost:{meat:1,coal:1},          desc:"+40 HP +голод",gives:{food:2},heals:40,id2:"cooked_meat"},
 ];
 
 function renderInv(){
     const grid=document.getElementById("invGrid"); grid.innerHTML="";
-    [{key:"wood",icon:"🪵"},{key:"stone",icon:"🪨"},{key:"food",icon:"🍖"},{key:"axe",icon:"🪓"},{key:"spear",icon:"🗡️"}].forEach(it=>{
+    [{key:"wood",icon:"🪵"},{key:"stone",icon:"🪨"},{key:"metal",icon:"⚙️"},{key:"fiber",icon:"🌿"},
+      {key:"coal",icon:"🪨"},{key:"food",icon:"🍖"},{key:"meat",icon:"🥩"},
+      {key:"axe",icon:"🪓"},{key:"spear",icon:"🗡️"},{key:"sword",icon:"⚔️"},
+      {key:"bow",icon:"🏹"},{key:"arrow",icon:"🪃"}].forEach(it=>{
         const d=document.createElement("div"); d.className="slot";
         d.innerHTML=`<span>${it.icon}</span><div class="cnt">${inv[it.key]}</div>`; grid.appendChild(d);
     });
@@ -709,7 +901,7 @@ function updateHPUI(){ const p=(playerHP/playerMaxHP)*100; document.getElementBy
 function takeDamage(d){ if(isDead)return; playerHP=Math.max(0,playerHP-d); updateHPUI(); showFloat("💔 -"+d); if(playerHP<=0) die(); }
 function eatFood(){ if(inv.food<=0){showFloat("❌ Немає їжі");return;} inv.food--; hunger=Math.min(100,hunger+35); playerHP=Math.min(playerMaxHP,playerHP+15); updateHPUI(); showFloat("🍖 +15 HP"); renderInv(); }
 function die(){ isDead=true; document.getElementById("deathScreen").style.display="flex"; }
-document.getElementById("respawnBtn").addEventListener("click",()=>{ playerHP=playerMaxHP; hunger=100; inv.wood=inv.stone=inv.food=inv.axe=inv.spear=0; camera.position.set(Math.random()*20-10,5,Math.random()*20-10); isDead=false; document.getElementById("deathScreen").style.display="none"; updateHPUI(); });
+document.getElementById("respawnBtn").addEventListener("click",()=>{ playerHP=playerMaxHP; hunger=100; inv.wood=inv.stone=inv.metal=inv.fiber=inv.coal=inv.food=inv.meat=inv.axe=inv.spear=inv.sword=inv.bow=inv.arrow=0; camera.position.set(Math.random()*20-10,5,Math.random()*20-10); isDead=false; document.getElementById("deathScreen").style.display="none"; updateHPUI(); });
 function updateHunger(dt){ hunger=Math.max(0,hunger-dt*1.2); if(hunger<=0){playerHP=Math.max(0,playerHP-dt*2);updateHPUI();if(playerHP<=0)die();} document.getElementById("hungerBar").style.width=hunger+"%"; }
 
 // ══════════════════════════════════════════════════════════════
@@ -724,11 +916,14 @@ function showFloat(msg){ const el=document.getElementById("floatMsg"); el.textCo
 const ray=new THREE.Raycaster(), CENTER=new THREE.Vector2(0,0);
 let tTree=null, tRock=null, tPlayer=null;
 
+let tScyth=null, tPlant=null;
 function castRay(){
-    ray.setFromCamera(CENTER,camera); tTree=null; tRock=null; tPlayer=null;
+    ray.setFromCamera(CENTER,camera); tTree=null; tRock=null; tPlayer=null; tScyth=null; tPlant=null;
     for(const [pid,rp] of Object.entries(remotePlayers)){ const h=ray.intersectObject(rp.mesh,true); if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;} }
+    for(const s of scythians){ if(!s.alive)continue; const h=ray.intersectObject(s.group,true); if(h.length&&h[0].distance<9){tScyth=s;return;} }
     for(const t of trees){ if(!t.alive)continue; const h=ray.intersectObject(t.group,true); if(h.length&&h[0].distance<9){tTree=t;return;} }
     for(const r of rocks){ const h=ray.intersectObject(r.mesh,true); if(h.length&&h[0].distance<7){tRock=r;return;} }
+    for(const p of plants){ if(!p.alive)continue; const h=ray.intersectObject(p.mesh,true); if(h.length&&h[0].distance<5){tPlant=p;return;} }
 }
 const tHPEl=document.getElementById("targetHP"),tHPBar=document.getElementById("targetHPBar");
 function updateTargetHP(t){ if(!t){tHPEl.style.display="none";return;} tHPEl.style.display="block"; const p=(t.hp/t.maxHp)*100; tHPBar.style.width=p+"%"; tHPBar.style.background=p>60?"#4caf50":p>30?"#ff9800":"#f44336"; }
@@ -746,9 +941,11 @@ function doAction(){
     if(buildMode){ placeBuilding(); return; }
     const now=performance.now(); if(now-lastAction<600) return; lastAction=now;
     castRay();
-    if(tPlayer){ const dmg=inv.spear>0?25:charDmg(); broadcast({type:"pvp_hit",target:tPlayer.pid,dmg,from:myNick}); showFloat("⚔️ -"+dmg); return; }
+    if(tPlayer){ const dmg=inv.sword>0?40:inv.spear>0?25:charDmg(); broadcast({type:"pvp_hit",target:tPlayer.pid,dmg,from:myNick}); showFloat("⚔️ -"+dmg); return; }
+    if(tScyth){ hitScythian(tScyth); return; }
     if(tTree){ shake(tTree.group); tTree.hp--; if(tTree.hp<=0) fellTree(tTree); return; }
-    if(tRock){ shake(tRock.mesh); inv.stone++; showFloat("🪨 +1"); return; }
+    if(tRock){ shake(tRock.mesh); inv.stone+=1+(inv.axe>0?1:0); if(Math.random()<0.15){inv.metal++;showFloat("🪨 +1 ⚙️ метал!");} else showFloat("🪨 +1"); return; }
+    if(tPlant){ tPlant.alive=false; tPlant.mesh.visible=false; inv.fiber+=1+Math.floor(Math.random()*2); showFloat("🌿 +клітковина"); setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.mesh.visible=true;}},15000); return; }
     showFloat("❌ Немає цілі");
 }
 let holdTimer=null;
@@ -832,7 +1029,19 @@ function handleMsg(pid,raw){
             spawnBuilding(data.btype,data.x,data.y,data.z,data.ry);
             if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
             break;
+        case "build_remove":
+            if(placedBuildings[data.idx]){scene.remove(placedBuildings[data.idx].mesh);placedBuildings.splice(data.idx,1);}
+            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
+            break;
+        case "build_move":
+            if(placedBuildings[data.idx]){const b=placedBuildings[data.idx];b.mesh.position.set(data.x,data.y,data.z);b.x=data.x;b.y=data.y;b.z=data.z;}
+            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
+            break;
         case "buildings_sync": data.buildings.forEach(b=>spawnBuilding(b.btype,b.x,b.y,b.z,b.ry)); break;
+        case "scythian_hit":
+            if(data.target===myId){ takeDamage(data.dmg); showFloat("🗡️ Скіф атакував! -"+data.dmg); }
+            if(isHost){const fwd=JSON.stringify(data);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});}
+            break;
         case "bye": removeRemotePlayer(pid); if(isHost){const fwd=JSON.stringify({type:"bye_fwd",pid});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(fwd);}catch(e){}});} break;
         case "bye_fwd": removeRemotePlayer(data.pid); break;
         case "full": setStatus("❌ Кімната заповнена!"); break;
@@ -1000,8 +1209,12 @@ function gameLoop(){
         camera.rotation.order="YXZ"; camera.rotation.y=yaw; camera.rotation.x=pitch;
         if(isMoving){camera.position.x-=Math.sin(yaw)*charSpeed();camera.position.z-=Math.cos(yaw)*charSpeed();}
         camera.position.y+=(getH(camera.position.x,camera.position.z)+1.9-camera.position.y)*0.18;
-        updateHunger(dt); updateSky(dt);
-        if(!buildMode){castRay(); updateTargetHP(tTree);}
+        updateHunger(dt); updateSky(dt); updateScythians(dt);
+        if(!buildMode){
+            castRay();
+            if(tScyth) updateTargetHPScyth(tScyth);
+            else updateTargetHP(tTree);
+        }
         else { updateGhost(); tHPEl.style.display="none"; }
 
         // Синхронізація позиції
