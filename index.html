@@ -245,10 +245,21 @@ canvas { display:block; }
 /* ══ SELF CAM ══ */
 #selfCamPanel {
     position:absolute; top:100px; right:14px;
-    width:90px; height:120px; border-radius:10px; overflow:hidden;
+    width:100px; height:140px; border-radius:12px; overflow:hidden;
     border:2px solid #4fc3f7; display:none; z-index:20;
+    box-shadow:0 4px 20px #0008;
 }
-#selfCamPanel canvas { width:100%; height:100%; }
+#selfCamPanel canvas { width:100% !important; height:100% !important; display:block; }
+
+/* ══ TOUCH ZONES ══ */
+#joystickZone {
+    position:absolute; bottom:0; left:0; width:50%; height:100%;
+    z-index:5; touch-action:none; pointer-events:none;
+}
+#lookZone {
+    position:absolute; top:0; right:0; width:50%; height:100%;
+    z-index:4; touch-action:none; pointer-events:none;
+}
 </style>
 </head>
 <body>
@@ -313,7 +324,7 @@ canvas { display:block; }
             <div id="hpBarWrap"><div id="hpBar"></div></div>
             <div id="hungerWrap"><div id="hungerBar"></div></div>
         </div>
-        <div id="timeBlock">🌤 <span id="timeLabel">День</span><br><span id="timeClock">12:00</span></div>
+        <div id="timeBlock">🌤 <span id="timeLabel">День</span><br><span id="timeClock">12:00</span><br><span id="exitLobby" onclick="exitToLobby()" style="font-size:10px;color:#aaa;cursor:pointer;text-decoration:underline;pointer-events:all">← Лобі</span></div>
     </div>
     <div id="playersOnline">👥 <span id="playerCount">1</span>/6</div>
     <button id="invBtn">🎒 Інвентар</button>
@@ -351,6 +362,9 @@ canvas { display:block; }
 
     <!-- Self camera panel -->
     <div id="selfCamPanel"></div>
+    <!-- Touch zones: left=move, right=look -->
+    <div id="joystickZone"></div>
+    <div id="lookZone"></div>
 
     <div id="chatBox">
         <div id="chatLog"></div>
@@ -371,7 +385,10 @@ canvas { display:block; }
         <button id="respawnBtn">🔄 Відродитись</button>
     </div>
 
-    <button id="moveBtn">🚶</button>
+    <button id="moveBtn" 
+        ontouchstart="isMoving=true;this.classList.add('active')" 
+        ontouchend="isMoving=false;this.classList.remove('active')"
+        onmousedown="isMoving=true" >🚶</button>
     <button id="jumpBtn">⬆️</button>
     <button id="actionBtn">🪓</button>
 </div>
@@ -1050,17 +1067,26 @@ const actionBtn=document.getElementById("actionBtn");
 actionBtn.addEventListener("touchstart",e=>{e.preventDefault();if(buildMode){placeBuilding();return;}holdTimer=setTimeout(()=>{eatFood();holdTimer=null;},500);},{passive:false});
 actionBtn.addEventListener("touchend",e=>{e.preventDefault();if(holdTimer){clearTimeout(holdTimer);holdTimer=null;doAction();}},{passive:false});
 actionBtn.addEventListener("mousedown",()=>{if(buildMode){placeBuilding();return;}holdTimer=setTimeout(()=>{eatFood();holdTimer=null;},500);});
-window.addEventListener("mouseup",()=>{if(holdTimer){clearTimeout(holdTimer);holdTimer=null;doAction();}});
+window.addEventListener("mouseup",()=>{ isMoving=false; if(holdTimer){clearTimeout(holdTimer);holdTimer=null;doAction();} });
+
+function exitToLobby(){
+    broadcast({type:"bye"});
+    if(isHost){clearInterval(announceInterval);removeRoom(roomId);}
+    resetNetState();
+    document.getElementById("game").style.display="none";
+    document.getElementById("lobby").style.display="flex";
+    if(myMesh){scene.remove(myMesh);myMesh=null;}
+    buildMode=false;
+    document.getElementById("buildBar").classList.remove("active");
+    if(ghostMesh){scene.remove(ghostMesh);ghostMesh=null;}
+    renderSavedRooms(); refreshRooms();
+}
 
 // ══════════════════════════════════════════════════════════════
 //  CONTROLS — Рух + Стрибок
 // ══════════════════════════════════════════════════════════════
-let isMoving=false;
-const moveBtn=document.getElementById("moveBtn");
-moveBtn.addEventListener("touchstart",e=>{e.preventDefault();isMoving=true;moveBtn.classList.add("active");},{passive:false});
-moveBtn.addEventListener("touchend",e=>{e.preventDefault();isMoving=false;moveBtn.classList.remove("active");},{passive:false});
-moveBtn.addEventListener("mousedown",()=>isMoving=true);
-window.addEventListener("mouseup",()=>isMoving=false);
+// isMoving тепер визначається джойстиком
+let isMoving=false; // залишаємо для сумісності — буде оновлюватись в gameLoop
 
 // Стрибок
 const jumpBtn=document.getElementById("jumpBtn");
@@ -1072,10 +1098,83 @@ jumpBtn.addEventListener("touchstart",e=>{e.preventDefault();doJump();},{passive
 jumpBtn.addEventListener("mousedown",doJump);
 window.addEventListener("keydown",e=>{if(e.code==="Space")doJump();});
 
-let yaw=0,pitch=0,lTX=0,lTY=0,lookOn=false;
-renderer.domElement.addEventListener("touchstart",e=>{if(e.touches.length===1){lookOn=true;lTX=e.touches[0].clientX;lTY=e.touches[0].clientY;}},{passive:true});
-renderer.domElement.addEventListener("touchmove",e=>{if(lookOn&&e.touches.length===1){yaw-=(e.touches[0].clientX-lTX)*0.004;pitch-=(e.touches[0].clientY-lTY)*0.003;pitch=Math.max(-0.8,Math.min(0.8,pitch));lTX=e.touches[0].clientX;lTY=e.touches[0].clientY;}},{passive:true});
-renderer.domElement.addEventListener("touchend",()=>lookOn=false);
+let yaw=0,pitch=0;
+
+// ── SPLIT TOUCH ZONES ──
+// Ліва половина = джойстик руху, права = свайп-погляд
+const joystickZone = document.getElementById("joystickZone");
+const lookZone     = document.getElementById("lookZone");
+const moveBtn      = document.getElementById("moveBtn");
+
+// Активуємо pointer-events лише на ігрових зонах
+joystickZone.style.pointerEvents = "all";
+lookZone.style.pointerEvents     = "all";
+
+// Джойстик руху (ліва зона)
+let joyActive=false, joyId=-1, joyStartX=0, joyStartY=0, joyDX=0, joyDY=0;
+const JOY_DEAD=12, JOY_MAX=55;
+
+joystickZone.addEventListener("touchstart",e=>{
+    e.preventDefault();
+    if(joyActive) return;
+    const t=e.changedTouches[0];
+    joyActive=true; joyId=t.identifier;
+    joyStartX=t.clientX; joyStartY=t.clientY;
+    joyDX=0; joyDY=0;
+    moveBtn.classList.add("active");
+},{passive:false});
+
+joystickZone.addEventListener("touchmove",e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){
+        if(t.identifier!==joyId) continue;
+        joyDX=t.clientX-joyStartX;
+        joyDY=t.clientY-joyStartY;
+        const mag=Math.sqrt(joyDX*joyDX+joyDY*joyDY);
+        if(mag>JOY_MAX){ joyDX=joyDX/mag*JOY_MAX; joyDY=joyDY/mag*JOY_MAX; }
+    }
+},{passive:false});
+
+joystickZone.addEventListener("touchend",e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){
+        if(t.identifier===joyId){ joyActive=false; joyDX=0; joyDY=0; moveBtn.classList.remove("active"); }
+    }
+},{passive:false});
+
+joystickZone.addEventListener("touchcancel",e=>{
+    joyActive=false; joyDX=0; joyDY=0; moveBtn.classList.remove("active");
+},{passive:false});
+
+// Свайп погляду (права зона)
+let lookId=-1, lTX=0, lTY=0;
+
+lookZone.addEventListener("touchstart",e=>{
+    e.preventDefault();
+    if(lookId!==-1) return;
+    const t=e.changedTouches[0];
+    lookId=t.identifier; lTX=t.clientX; lTY=t.clientY;
+},{passive:false});
+
+lookZone.addEventListener("touchmove",e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){
+        if(t.identifier!==lookId) continue;
+        yaw  -=(t.clientX-lTX)*0.004;
+        pitch-=(t.clientY-lTY)*0.003;
+        pitch=Math.max(-0.8,Math.min(0.8,pitch));
+        lTX=t.clientX; lTY=t.clientY;
+    }
+},{passive:false});
+
+lookZone.addEventListener("touchend",e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches){ if(t.identifier===lookId) lookId=-1; }
+},{passive:false});
+
+lookZone.addEventListener("touchcancel",e=>{ lookId=-1; },{passive:false});
+
+// Mouse look (ПК)
 let md=false,lMX=0,lMY=0;
 renderer.domElement.addEventListener("mousedown",e=>{md=true;lMX=e.clientX;lMY=e.clientY;});
 renderer.domElement.addEventListener("mousemove",e=>{if(!md)return;yaw-=(e.clientX-lMX)*0.004;pitch-=(e.clientY-lMY)*0.003;pitch=Math.max(-0.8,Math.min(0.8,pitch));lMX=e.clientX;lMY=e.clientY;});
@@ -1121,6 +1220,9 @@ function handleMsg(pid,raw){
     }
 }
 function setupPeer(id,cb){
+    // Знищуємо старий peer якщо є
+    if(myPeer){ try{ myPeer.destroy(); }catch(e){} myPeer=null; }
+
     myPeer=new Peer(id);
     myPeer.on("open",realId=>{myId=realId;setStatus("✅ ID: "+realId);if(cb)cb(realId);});
     myPeer.on("connection",conn=>{
@@ -1132,11 +1234,11 @@ function setupPeer(id,cb){
             conn.on("close",()=>{handleMsg(conn.peer,JSON.stringify({type:"bye"}));delete clientConns[conn.peer];updatePlayerCount();});
         });
     });
-    myPeer.on("disconnected",()=>myPeer.reconnect());
+    myPeer.on("disconnected",()=>{ try{ myPeer.reconnect(); }catch(e){} });
     myPeer.on("error",err=>{
         if(err.type==="unavailable-id") setupPeer("tf-"+Math.random().toString(36).slice(2,10),cb);
-        else if(err.type==="peer-unavailable") setStatus("❌ Кімнату не знайдено.");
-        else setStatus("❌ "+err.type);
+        else if(err.type==="peer-unavailable") setStatus("❌ Кімнату не знайдено. Перевір ID.");
+        else { setStatus("❌ "+err.type); }
     });
 }
 
@@ -1153,30 +1255,43 @@ async function refreshRooms(){
     else{list.innerHTML="";active.forEach(([id,r])=>{const d=document.createElement("div");d.className="room";const ico=CHAR_ICONS[r.char]||"🧑";d.innerHTML=`<div>${ico} <b>${r.nick}</b>'s World</div><div style="font-size:12px;color:#81c784">👥 ${r.count||1}/6</div>`;d.addEventListener("click",()=>joinRoom(id,r.nick));list.appendChild(d);});setStatus(`Знайдено: ${active.length}`);}
 }
 
+function resetNetState(){
+    // Очищуємо старий стан перед новим підключенням
+    isHost=false; hostConn=null;
+    Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});
+    clientConns={};
+    Object.keys(remotePlayers).forEach(pid=>removeRemotePlayer(pid));
+    if(announceInterval){clearInterval(announceInterval);announceInterval=null;}
+    document.getElementById("createBtn").disabled=false;
+}
+
 function createRoom(){
+    resetNetState();
     roomId="tf-"+Math.random().toString(36).slice(2,9); isHost=true;
     setStatus("⏳ Створюємо...");
     document.getElementById("createBtn").disabled=true;
     setupPeer(roomId,()=>{
         setStatus("✅ Кімната: "+roomId);
-        saveRoom(roomId, myNick); // зберігаємо в localStorage
+        saveRoom(roomId, myNick);
         announceRoom(roomId,myNick,1);
         announceInterval=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length),15000);
         startGame();
     });
 }
 function joinRoom(id,hostNick){
+    resetNetState();
     id=id.trim().toLowerCase(); roomId=id; isHost=false;
     setStatus("🔗 Підключаємось...");
     document.getElementById("createBtn").disabled=true;
-    saveRoom(id, hostNick||"Хост"); // зберігаємо з'єднання
+    saveRoom(id, hostNick||"Хост");
     setupPeer("tf-"+Math.random().toString(36).slice(2,12),()=>{
-        hostConn=myPeer.connect(id,{reliable:true});
+        hostConn=myPeer.connect(id,{reliable:true,serialization:"json"});
         let connected=false;
         hostConn.on("open",()=>{connected=true;setStatus("✅ Підключено!");hostConn.send(JSON.stringify({type:"hello",nick:myNick,char:myChar}));startGame();});
         hostConn.on("data",data=>{const raw=typeof data==="object"?JSON.stringify(data):data;handleMsg(id,raw);});
         hostConn.on("close",()=>addChat("🔌","Хост відключився"));
-        setTimeout(()=>{if(!connected){setStatus("❌ Не вдалось підключитись.");document.getElementById("createBtn").disabled=false;}},8000);
+        hostConn.on("error",e=>setStatus("❌ Помилка з'єднання"));
+        setTimeout(()=>{if(!connected){setStatus("❌ Не вдалось підключитись. Спробуй ще.");document.getElementById("createBtn").disabled=false;}},10000);
     });
 }
 
@@ -1295,36 +1410,49 @@ function gameLoop(){
     const now=performance.now(), dt=Math.min((now-lastTime)/1000,0.1); lastTime=now;
 
     if(!isDead){
-        // ── Рух клавіатура + кнопка ──
-        let moving=isMoving;
+        // ── Рух: джойстик + клавіатура ──
         let mx=0, mz=0;
-        if(keys["KeyW"]||keys["ArrowUp"])    { mz=-1; moving=true; }
-        if(keys["KeyS"]||keys["ArrowDown"])  { mz=1;  moving=true; }
-        if(keys["KeyA"]||keys["ArrowLeft"])  { mx=-1; moving=true; }
-        if(keys["KeyD"]||keys["ArrowRight"]) { mx=1;  moving=true; }
+
+        // Джойстик (ліва зона)
+        if(joyActive){
+            const mag=Math.sqrt(joyDX*joyDX+joyDY*joyDY);
+            if(mag>JOY_DEAD){
+                mx= joyDX/JOY_MAX;
+                mz= joyDY/JOY_MAX;
+            }
+        }
+
+        // Клавіатура
+        if(keys["KeyW"]||keys["ArrowUp"])    mz=-1;
+        if(keys["KeyS"]||keys["ArrowDown"])  mz= 1;
+        if(keys["KeyA"]||keys["ArrowLeft"])  mx=-1;
+        if(keys["KeyD"]||keys["ArrowRight"]) mx= 1;
+
+        // Кнопка "вперед" (moveBtn — залишається як fallback для старих пристроїв)
+        if(isMoving) mz=-1;
+
+        const moving = (mx!==0||mz!==0);
+        if(moving) legPhase+=dt*8;
 
         const spd=charSpeed();
         let nx=playerPos.x, nz=playerPos.z;
-        if(mz||mx){
-            const len=Math.sqrt(mx*mx+mz*mz);
-            nx=playerPos.x-(Math.sin(yaw)*(-mz/len)+Math.cos(yaw)*(mx/len))*spd;
-            nz=playerPos.z-(Math.cos(yaw)*(-mz/len)-Math.sin(yaw)*(mx/len))*spd;
-        } else if(moving){
-            nx=playerPos.x-Math.sin(yaw)*spd;
-            nz=playerPos.z-Math.cos(yaw)*spd;
+        if(moving){
+            const len=Math.sqrt(mx*mx+mz*mz)||1;
+            const nxRaw=mx/len, nzRaw=mz/len;
+            // Трансформуємо напрям у простір камери
+            nx=playerPos.x+(Math.sin(yaw)*(-nzRaw)+Math.cos(yaw)*nxRaw)*spd;
+            nz=playerPos.z+(Math.cos(yaw)*(-nzRaw)-Math.sin(yaw)*nxRaw)*spd;
         }
 
-        if(moving) legPhase+=dt*8;
+        // ── Колізія зі стінами (спочатку, ДО фізики висоти) ──
+        if(!checkWallCollision(nx, playerPos.z, playerPos.y)) playerPos.x=nx;
+        if(!checkWallCollision(playerPos.x, nz, playerPos.y)) playerPos.z=nz;
 
-        // ── Фізика вертикалі (гравітація + стрибок) ──
-        const groundY=getH(nx,nz);
+        // ── Фізика вертикалі — ПІСЛЯ оновлення XZ ──
+        const groundY=getH(playerPos.x, playerPos.z);          // реальний рельєф під поточною XZ
+        const stairsY=getStairsHeight(playerPos.x, playerPos.z);
+        const floorY =getFloorHeight(playerPos.x, playerPos.z, playerPos.y);
 
-        // Перевіряємо сходи
-        const stairsY=getStairsHeight(nx,nz);
-        // Перевіряємо підлогу будівлі
-        const floorY=getFloorHeight(nx,nz,playerPos.y);
-
-        // Ефективна підлога
         let effectiveGround=groundY;
         if(stairsY!==null) effectiveGround=Math.max(effectiveGround,stairsY);
         if(floorY!==null)  effectiveGround=Math.max(effectiveGround,floorY);
@@ -1333,19 +1461,20 @@ function gameLoop(){
         playerVelY+=GRAVITY*dt;
         playerPos.y+=playerVelY*dt;
 
-        // Не провалюватись у землю/підлогу
+        // Тверда підлога — ніколи не провалюватись
         const minY=effectiveGround+1.0;
         if(playerPos.y<=minY){
             playerPos.y=minY;
             if(playerVelY<0) playerVelY=0;
             isOnGround=true;
         } else {
-            isOnGround=false;
+            // Ще перевіримо: якщо ми дуже близько знизу (запас 0.05) — теж ставимо на землю
+            if(playerPos.y<minY+0.05&&playerVelY<=0){
+                playerPos.y=minY; playerVelY=0; isOnGround=true;
+            } else {
+                isOnGround=false;
+            }
         }
-
-        // ── Колізія зі стінами ──
-        if(!checkWallCollision(nx, playerPos.z, playerPos.y)) playerPos.x=nx;
-        if(!checkWallCollision(playerPos.x, nz, playerPos.y)) playerPos.z=nz;
 
         // ── Камера ──
         if(camMode===1){
@@ -1362,22 +1491,18 @@ function gameLoop(){
             camera.rotation.y=yaw; camera.rotation.x=pitch;
         }
 
-        // ── Self-cam ──
+        // ── Self-cam — вид спереду (як у дзеркалі) ──
         if(camMode===2&&myMesh){
-            // Камера дивиться на обличчя з відстані
-            const faceX=playerPos.x-Math.sin(yaw)*1.2;
-            const faceZ=playerPos.z-Math.cos(yaw)*1.2;
-            const faceY=playerPos.y+0.7;
-            selfCamera.position.set(faceX, faceY+0.1, faceZ);
-            // Дивимося на голову спереду (обличчя)
-            const faceTarget=new THREE.Vector3(
-                playerPos.x+Math.sin(yaw)*0.3,
-                playerPos.y+0.65,
-                playerPos.z+Math.cos(yaw)*0.3
-            );
-            selfCamera.lookAt(faceTarget);
-            // Показуємо персонажа для self-cam
             myMesh.visible=true;
+            // Камера спереду обличчя персонажа — дивиться ззаду (як selfie)
+            const faceDist=1.4;
+            // Позиція камери — ПЕРЕД обличчям (з боку де обличчя)
+            const faceX=playerPos.x+Math.sin(yaw)*faceDist;
+            const faceZ=playerPos.z+Math.cos(yaw)*faceDist;
+            const faceY=playerPos.y+0.55;
+            selfCamera.position.set(faceX, faceY, faceZ);
+            // Дивимося НАЗАД на обличчя (протилежний напрям)
+            selfCamera.lookAt(playerPos.x, playerPos.y+0.5, playerPos.z);
         }
 
         // ── Власний меш ──
