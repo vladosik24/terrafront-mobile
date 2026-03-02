@@ -136,6 +136,14 @@ canvas { display:block; }
     pointer-events:all; z-index:15;
 }
 #buildModeBtn.active { border-color:#ffe082; background:#ffe08230; }
+#camBtn {
+    position:absolute; top:54px; right:14px;
+    width:38px; height:38px; border-radius:10px;
+    background:#0009; border:2px solid #fff3; color:#fff; font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    pointer-events:all; z-index:15;
+}
+#camBtn.active { border-color:#4fc3f7; background:#4fc3f730; }
 
 /* ══ INVENTORY ══ */
 #invBtn {
@@ -298,6 +306,7 @@ canvas { display:block; }
         <div class="buildSlot"    data-build="__move"   onclick="selectBuild('__move')" ><span>↔️</span><div class="bname">Перемістити</div></div>
     </div>
     <div id="buildModeBtn" onclick="toggleBuildMode()" title="Будівництво">🔨</div>
+    <div id="camBtn" onclick="toggleCam()" title="Вид камери">👁️</div>
 
     <div id="chatBox">
         <div id="chatLog"></div>
@@ -382,10 +391,23 @@ function selectChar(c) {
     });
 }
 
+// ── Збереження нікнейму та персонажа ──
+(function loadSaved(){
+    const saved = localStorage.getItem("tf_profile");
+    if(saved){
+        try{
+            const p=JSON.parse(saved);
+            if(p.nick) document.getElementById("nickInput").value=p.nick;
+            if(p.char){ myChar=p.char; selectChar(p.char); }
+        }catch(e){}
+    }
+})();
+
 function goLobby() {
     const nick = document.getElementById("nickInput").value.trim();
     if (!nick) { document.getElementById("nickInput").style.borderColor="#e53935"; return; }
     myNick = nick;
+    localStorage.setItem("tf_profile", JSON.stringify({nick:myNick, char:myChar}));
     document.getElementById("charSelect").style.display = "none";
     document.getElementById("lobby").style.display = "flex";
     refreshRooms();
@@ -896,9 +918,13 @@ function getNearestBuilding(maxDist=6){
 
 // Взаємодія з інтерактивними будівлями (вогнище/ліжко)
 function tryInteract(){
-    const idx=getNearestBuilding(3.5);
+    const idx=getNearestBuilding(3.0);
     if(idx===null) return false;
     const b=placedBuildings[idx];
+    // Перевіряємо відстань від гравця (не від камери)
+    const bpos=b.mesh.position;
+    const dist=Math.sqrt((playerPos.x-bpos.x)**2+(playerPos.z-bpos.z)**2);
+    if(dist>3.5) return false;
     if(b.type==="bed"){
         playerHP=Math.min(playerMaxHP,playerHP+30);
         hunger=Math.min(100,hunger+10);
@@ -1197,7 +1223,7 @@ function die(){ isDead=true; document.getElementById("deathScreen").style.displa
 document.getElementById("respawnBtn").addEventListener("click",()=>{
     playerHP=playerMaxHP; hunger=100;
     inv.wood=inv.stone=inv.metal=inv.fiber=inv.coal=inv.food=inv.meat=inv.axe=inv.spear=inv.sword=inv.bow=inv.arrow=0;
-    camera.position.set(Math.random()*20-10,5,Math.random()*20-10);
+    playerPos.set(Math.random()*20-10, 5, Math.random()*20-10);
     isDead=false; document.getElementById("deathScreen").style.display="none"; updateHPUI();
 });
 function updateHunger(dt){ hunger=Math.max(0,hunger-dt*1.2); if(hunger<=0){playerHP=Math.max(0,playerHP-dt*2);updateHPUI();if(playerHP<=0)die();} document.getElementById("hungerBar").style.width=hunger+"%"; }
@@ -1394,15 +1420,68 @@ function joinRoom(id,hostNick){
 }
 
 function startGame(){
-    // Застосувати стат персонажа
     const cfg=charConfig();
     playerMaxHP=cfg.maxHP; playerHP=cfg.maxHP;
+
+    // Стартова позиція
+    playerPos.set(Math.random()*10-5, 5, Math.random()*10-5);
+
+    // Створюємо власний меш персонажа (видний тільки у 3-й особі)
+    myMesh = makeCharMesh(myChar);
+    myMesh.visible = false;
+    scene.add(myMesh);
 
     document.getElementById("lobby").style.display="none";
     document.getElementById("game").style.display="block";
     addChat("🏠", isHost?`Ти хост. ID: ${roomId}`:"Підключено!");
-    addChat("💡","🔨 = будівництво | тап 🪓 = удар | тримай = їжа");
+    addChat("💡","🔨 будівля | 🪓 удар | тримай=їжа | 👁️ вид");
     updateHPUI(); gameLoop();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ВЛАСНИЙ ПЕРСОНАЖ (видно у 3-й особі)
+// ══════════════════════════════════════════════════════════════
+let myMesh = null; // створюється після вибору персонажа в startGame
+let thirdPerson = false;
+const CAM_OFFSET_3P = new THREE.Vector3(0, 2.2, 4.5); // зміщення камери за персонажем
+
+function toggleCam(){
+    thirdPerson = !thirdPerson;
+    document.getElementById("camBtn").classList.toggle("active", thirdPerson);
+    document.getElementById("crosshair").style.display = thirdPerson ? "none" : "";
+    if(myMesh) myMesh.visible = thirdPerson;
+    showFloat(thirdPerson ? "👁️ Вид 3-ї особи" : "🎯 Вид від 1-ї особи");
+}
+
+// ── Позиція гравця (окремо від camera для колізій) ──
+const playerPos = new THREE.Vector3(0, 5, 0);
+
+// ══════════════════════════════════════════════════════════════
+//  КОЛІЗІЯ зі стінами / підлогою
+// ══════════════════════════════════════════════════════════════
+const PLAYER_RADIUS = 0.45;
+
+function checkCollision(nx, nz){
+    for(const b of placedBuildings){
+        const type = b.type;
+        // Тільки тверді об'єкти
+        if(type==="floor"||type==="roof"||type==="campfire"||type==="torch"||type==="fence") continue;
+        const def = BUILD_DEFS[type]; if(!def) continue;
+
+        // Трансформуємо позицію гравця у локальний простір будівлі
+        const cos=Math.cos(-b.ry), sin=Math.sin(-b.ry);
+        const dx=nx-b.x, dz=nz-b.z;
+        const lx=cos*dx-sin*dz, lz=sin*dx+cos*dz;
+
+        const hw=def.w/2+PLAYER_RADIUS, hd=def.d/2+PLAYER_RADIUS;
+        // Тільки якщо гравець на потрібній висоті (не вище/нижче будівлі)
+        const playerY = getH(nx,nz)+1.0;
+        const bTop=b.y+def.h/2, bBot=b.y-def.h/2;
+        if(playerY < bBot-0.3 || playerY > bTop+0.5) continue;
+
+        if(Math.abs(lx)<hw && Math.abs(lz)<hd) return true; // колізія!
+    }
+    return false;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1410,21 +1489,72 @@ function startGame(){
 // ══════════════════════════════════════════════════════════════
 let lastTime=performance.now(), lastSync=0;
 
+// Анімація ніг персонажа
+let legPhase=0;
+
 function gameLoop(){
     requestAnimationFrame(gameLoop);
     const now=performance.now(), dt=Math.min((now-lastTime)/1000,0.1); lastTime=now;
 
     if(!isDead){
-        camera.rotation.order="YXZ"; camera.rotation.y=yaw; camera.rotation.x=pitch;
-        if(isMoving){ camera.position.x-=Math.sin(yaw)*charSpeed(); camera.position.z-=Math.cos(yaw)*charSpeed(); }
-        camera.position.y+=(getH(camera.position.x,camera.position.z)+1.9-camera.position.y)*0.18;
+        // ── Рух з колізією ──
+        if(isMoving){
+            const spd=charSpeed();
+            const nx = playerPos.x - Math.sin(yaw)*spd;
+            const nz = playerPos.z - Math.cos(yaw)*spd;
+            // Окремо перевіряємо X і Z щоб «ковзати» вздовж стін
+            if(!checkCollision(nx, playerPos.z)) playerPos.x=nx;
+            if(!checkCollision(playerPos.x, nz)) playerPos.z=nz;
+            legPhase += dt*8;
+        }
+
+        // Висота за ландшафтом
+        const groundY = getH(playerPos.x, playerPos.z);
+        playerPos.y += (groundY+1.0 - playerPos.y)*0.2;
+
+        // ── Камера ──
+        if(thirdPerson){
+            // 3-тя особа: камера позаду і вище персонажа
+            const camX = playerPos.x + Math.sin(yaw)*CAM_OFFSET_3P.z;
+            const camZ = playerPos.z + Math.cos(yaw)*CAM_OFFSET_3P.z;
+            const camY = playerPos.y + CAM_OFFSET_3P.y;
+            camera.position.set(camX, camY, camZ);
+            // Дивимося на голову персонажа
+            const lookAt = new THREE.Vector3(playerPos.x, playerPos.y+0.8, playerPos.z);
+            camera.lookAt(lookAt);
+        } else {
+            // 1-ша особа: очі = голова гравця
+            camera.position.set(playerPos.x, playerPos.y+0.9, playerPos.z);
+            camera.rotation.order="YXZ";
+            camera.rotation.y=yaw; camera.rotation.x=pitch;
+        }
+
+        // ── Оновлення власного меша ──
+        if(myMesh){
+            myMesh.position.set(playerPos.x, playerPos.y-0.2, playerPos.z);
+            myMesh.rotation.y = yaw + Math.PI;
+            myMesh.visible = thirdPerson;
+            // Анімація ніг — качання під час руху
+            if(isMoving){
+                const swing = Math.sin(legPhase)*0.4;
+                // Знаходимо ноги (перші 2 Mesh у групі — ноги)
+                let legIdx=0;
+                myMesh.children.forEach(c=>{
+                    if(c.isMesh && legIdx<2){
+                        c.rotation.x = legIdx%2===0 ? swing : -swing;
+                        legIdx++;
+                    }
+                });
+            }
+        }
+
         updateHunger(dt); updateSky(dt);
         if(!buildMode){ castRay(); updateTargetHP(tTree); }
         else { updateGhost(); tHPEl.style.display="none"; }
 
         if(now-lastSync>100){
             lastSync=now;
-            const pd={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw,pid:myId};
+            const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};
             if(isHost){const msg=JSON.stringify({type:"host_pos",...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}
             else if(hostConn){try{hostConn.send(JSON.stringify({type:"pos",...pd}));}catch(e){}}
         }
@@ -1435,7 +1565,7 @@ function gameLoop(){
     fireLights.forEach(fl=>{
         const flicker=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;
         fl.light.intensity=fl.base*flicker;
-        if(fl.mesh){ fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18; fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12; fl.mesh.position.y=fl.mesh.position.y; }
+        if(fl.mesh){ fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18; fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12; }
         if(fl.innerMesh){ fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22; }
     });
 
