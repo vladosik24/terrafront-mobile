@@ -288,6 +288,12 @@ canvas { display:block; }
         <div class="buildSlot"    data-build="stairs"   onclick="selectBuild('stairs')" ><span>🪜</span><div class="bname">Сходи</div></div>
         <div class="buildSlot"    data-build="tower"    onclick="selectBuild('tower')"  ><span>🗼</span><div class="bname">Вежа</div></div>
         <div class="buildSlot"    data-build="campfire" onclick="selectBuild('campfire')"><span>🔥</span><div class="bname">Вогнище</div></div>
+        <div class="buildSlot"    data-build="bed"      onclick="selectBuild('bed')"    ><span>🛏️</span><div class="bname">Ліжко</div></div>
+        <div class="buildSlot"    data-build="chest"    onclick="selectBuild('chest')"  ><span>📦</span><div class="bname">Скриня</div></div>
+        <div class="buildSlot"    data-build="table"    onclick="selectBuild('table')"  ><span>🪑</span><div class="bname">Стіл</div></div>
+        <div class="buildSlot"    data-build="fence"    onclick="selectBuild('fence')"  ><span>🌿</span><div class="bname">Паркан</div></div>
+        <div class="buildSlot"    data-build="window"   onclick="selectBuild('window')" ><span>🪟</span><div class="bname">Вікно</div></div>
+        <div class="buildSlot"    data-build="torch"    onclick="selectBuild('torch')"  ><span>🕯️</span><div class="bname">Факел</div></div>
         <div class="buildSlot"    data-build="__break"  onclick="selectBuild('__break')"><span>💥</span><div class="bname">Зламати</div></div>
         <div class="buildSlot"    data-build="__move"   onclick="selectBuild('__move')" ><span>↔️</span><div class="bname">Перемістити</div></div>
     </div>
@@ -731,16 +737,101 @@ function removeRemotePlayer(pid){
 function updatePlayerCount(){ document.getElementById("playerCount").textContent=1+Object.keys(remotePlayers).length; }
 
 // ══════════════════════════════════════════════════════════════
+//  PROCEDURAL TEXTURES via Canvas
+// ══════════════════════════════════════════════════════════════
+function makeTex(size, drawFn){
+    const c=document.createElement("canvas"); c.width=c.height=size;
+    const ctx=c.getContext("2d"); drawFn(ctx,size);
+    const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+
+const TEX = {
+    wall: makeTex(128, (ctx,s)=>{
+        ctx.fillStyle="#c8a070"; ctx.fillRect(0,0,s,s);
+        const bw=30,bh=14,rows=Math.ceil(s/bh);
+        for(let r=0;r<rows;r++){
+            const off=(r%2)*bw*0.5;
+            for(let x=-bw;x<s+bw;x+=bw){
+                const shade=200+Math.random()*40|0;
+                ctx.fillStyle=`rgb(${shade},${shade*0.7|0},${shade*0.5|0})`;
+                ctx.fillRect(x+off+1,r*bh+1,bw-2,bh-2);
+            }
+        }
+        ctx.strokeStyle="#8a6a4a"; ctx.lineWidth=1;
+        for(let r=0;r<rows;r++){ctx.beginPath();ctx.moveTo(0,r*bh);ctx.lineTo(s,r*bh);ctx.stroke();}
+    }),
+    floor: makeTex(128, (ctx,s)=>{
+        ctx.fillStyle="#7a5230"; ctx.fillRect(0,0,s,s);
+        const pw=20;
+        for(let x=0;x<s;x+=pw){
+            const shade=100+Math.random()*40|0;
+            ctx.fillStyle=`rgb(${shade},${shade*0.65|0},${shade*0.38|0})`;
+            ctx.fillRect(x+1,0,pw-2,s);
+            // річні кільця
+            ctx.strokeStyle="rgba(0,0,0,0.15)"; ctx.lineWidth=1;
+            for(let y=10;y<s;y+=15+Math.random()*10|0){
+                ctx.beginPath(); ctx.moveTo(x+2,y); ctx.lineTo(x+pw-2,y+Math.random()*4-2); ctx.stroke();
+            }
+        }
+    }),
+    roof: makeTex(128, (ctx,s)=>{
+        ctx.fillStyle="#5d4037"; ctx.fillRect(0,0,s,s);
+        const tw=16,th=12;
+        for(let r=0;r<s/th+1;r++){
+            for(let c=0;c<s/tw+1;c++){
+                const off=(r%2)*tw*0.5;
+                const shade=80+Math.random()*30|0;
+                ctx.fillStyle=(r+c)%2===0?`rgb(${shade+20},${shade*0.55|0},${shade*0.4|0})`:`rgb(${shade},${shade*0.5|0},${shade*0.35|0})`;
+                ctx.fillRect(c*tw+off,r*th,tw-1,th-1);
+            }
+        }
+    }),
+    door: makeTex(64, (ctx,s)=>{
+        ctx.fillStyle="#3e2310"; ctx.fillRect(0,0,s,s);
+        // панелі
+        [[4,4,s-8,s/2-8],[4,s/2+4,s-8,s/2-8]].forEach(([x,y,w,h])=>{
+            ctx.fillStyle="#4a2a14"; ctx.fillRect(x,y,w,h);
+            ctx.strokeStyle="#2a1208"; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
+        });
+        // ручка
+        ctx.fillStyle="#c8a000"; ctx.beginPath(); ctx.arc(s*0.72,s*0.52,3,0,Math.PI*2); ctx.fill();
+    }),
+    stone: makeTex(128, (ctx,s)=>{
+        ctx.fillStyle="#888"; ctx.fillRect(0,0,s,s);
+        for(let i=0;i<60;i++){
+            const x=Math.random()*s,y=Math.random()*s,r=5+Math.random()*15;
+            const shade=100+Math.random()*60|0;
+            ctx.fillStyle=`rgb(${shade},${shade},${shade})`;
+            ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+        }
+    }),
+    wood: makeTex(64, (ctx,s)=>{
+        ctx.fillStyle="#8B6914"; ctx.fillRect(0,0,s,s);
+        for(let y=0;y<s;y+=8){ ctx.strokeStyle="rgba(0,0,0,0.2)"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(s,y); ctx.stroke(); }
+    }),
+};
+
+function matTex(tex, color=0xffffff, rough=0.9){
+    return new THREE.MeshStandardMaterial({map:tex, color, roughness:rough});
+}
+
+// ══════════════════════════════════════════════════════════════
 //  BUILDING SYSTEM
 // ══════════════════════════════════════════════════════════════
 const BUILD_DEFS = {
-    wall:     { cost:{wood:3,stone:2}, color:0xbc8a5f, w:3,   h:3,   d:0.3, label:"Стіна"   },
-    floor:    { cost:{wood:4},         color:0x8B6914, w:3,   h:0.2, d:3,   label:"Підлога" },
-    door:     { cost:{wood:5},         color:0x5c3a1e, w:1.2, h:2.8, d:0.3, label:"Двері"   },
-    roof:     { cost:{wood:6,stone:1}, color:0x795548, w:3,   h:0.4, d:3,   label:"Дах"     },
-    stairs:   { cost:{wood:4,stone:1}, color:0xa0826d, w:1.5, h:2,   d:3,   label:"Сходи"   },
-    tower:    { cost:{wood:6,stone:8}, color:0x9e9e9e, w:2,   h:6,   d:2,   label:"Вежа"    },
-    campfire: { cost:{wood:3},         color:0xff5722, w:0.8, h:0.5, d:0.8, label:"Вогнище" },
+    wall:     { cost:{wood:3,stone:2},  w:3,   h:3,   d:0.3, label:"Стіна"   },
+    floor:    { cost:{wood:4},          w:3,   h:0.2, d:3,   label:"Підлога" },
+    door:     { cost:{wood:5},          w:1.2, h:2.8, d:0.3, label:"Двері"   },
+    roof:     { cost:{wood:6,stone:1},  w:3,   h:0.4, d:3,   label:"Дах"     },
+    stairs:   { cost:{wood:4,stone:1},  w:1.5, h:2,   d:3,   label:"Сходи"   },
+    tower:    { cost:{wood:6,stone:8},  w:2,   h:6,   d:2,   label:"Вежа"    },
+    campfire: { cost:{wood:3},          w:1,   h:0.6, d:1,   label:"Вогнище", interact:true },
+    bed:      { cost:{wood:6,fiber:4},  w:1,   h:0.8, d:2,   label:"Ліжко",   interact:true },
+    chest:    { cost:{wood:4,metal:2},  w:0.8, h:0.6, d:0.6, label:"Скриня"  },
+    table:    { cost:{wood:4},          w:1.2, h:0.8, d:0.8, label:"Стіл"    },
+    fence:    { cost:{wood:2},          w:2,   h:1,   d:0.15,label:"Паркан"  },
+    window:   { cost:{wood:2,stone:1},  w:1.2, h:1.2, d:0.15,label:"Вікно"   },
+    torch:    { cost:{wood:1,fiber:1},  w:0.1, h:0.8, d:0.1, label:"Факел"   },
 };
 
 let buildMode    = false;
@@ -797,10 +888,31 @@ function getNearestBuilding(maxDist=6){
     for(let i=0;i<placedBuildings.length;i++){
         const b=placedBuildings[i];
         if(!b.mesh.parent) continue;
-        const hits=ray.intersectObject(b.mesh,false);
+        const hits=ray.intersectObject(b.mesh,true); // true = recurse into group
         if(hits.length&&hits[0].distance<bestD){bestD=hits[0].distance;best=i;}
     }
     return best;
+}
+
+// Взаємодія з інтерактивними будівлями (вогнище/ліжко)
+function tryInteract(){
+    const idx=getNearestBuilding(3.5);
+    if(idx===null) return false;
+    const b=placedBuildings[idx];
+    if(b.type==="bed"){
+        playerHP=Math.min(playerMaxHP,playerHP+30);
+        hunger=Math.min(100,hunger+10);
+        updateHPUI(); showFloat("🛏️ Відпочив! +30 HP"); return true;
+    }
+    if(b.type==="campfire"){
+        if(inv.meat>=1&&inv.coal>=1){
+            inv.meat--; inv.coal--;
+            playerHP=Math.min(playerMaxHP,playerHP+40);
+            hunger=Math.min(100,hunger+50);
+            updateHPUI(); renderInv(); showFloat("🥩 Смажено! +40 HP"); return true;
+        } else { showFloat("❌ Потрібно 🥩 м'ясо + 🪨 вугілля"); return true; }
+    }
+    return false;
 }
 
 function placeBuilding(){
@@ -822,13 +934,11 @@ function placeBuilding(){
             const idx=getNearestBuilding();
             if(idx===null){showFloat("❌ Наведи на споруду");return;}
             movingBuilding=idx;
-            placedBuildings[idx].mesh.material.emissive=new THREE.Color(0x4fc3f7);
-            placedBuildings[idx].mesh.material.emissiveIntensity=0.5;
+            placedBuildings[idx].mesh.traverse(c=>{if(c.isMesh&&c.material&&c.material.emissive)c.material.emissive.setHex(0x4fc3f7);});
             showFloat("↔️ Тепер постав на нове місце");
         } else {
             const b=placedBuildings[movingBuilding];
-            b.mesh.material.emissive=new THREE.Color(0x000000);
-            b.mesh.material.emissiveIntensity=0;
+            b.mesh.traverse(c=>{if(c.isMesh&&c.material&&c.material.emissive)c.material.emissive.setHex(0x000000);});
             const nx=camera.position.x-Math.sin(yaw)*2.5;
             const nz=camera.position.z-Math.cos(yaw)*2.5;
             const ny=getH(nx,nz)+BUILD_DEFS[b.type].h/2;
@@ -838,7 +948,11 @@ function placeBuilding(){
         }
         return;
     }
-    if(!ghostMesh) return;
+    // Спробувати взаємодію з вогнищем/ліжком перед будівництвом
+    if(!ghostMesh){
+        if(tryInteract()) return;
+        return;
+    }
     const def=BUILD_DEFS[selectedBuild]; if(!def) return;
     const canBuild=Object.entries(def.cost).every(([k,v])=>inv[k]>=v);
     if(!canBuild){showFloat("❌ Не вистачає: "+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>k+"×"+(v-inv[k])).join(", "));return;}
@@ -849,16 +963,180 @@ function placeBuilding(){
     showFloat("🏗️ "+def.label+" збудована!"); renderInv();
 }
 
+// Зберігаємо всі вогні для анімації
+const fireLights = [];
+
 function spawnBuilding(type,x,y,z,ry){
     const def=BUILD_DEFS[type];
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),new THREE.MeshStandardMaterial({color:def.color,roughness:0.9}));
-    mesh.position.set(x,y,z); mesh.rotation.y=ry; mesh.castShadow=true; mesh.receiveShadow=true;
-    scene.add(mesh);
-    placedBuildings.push({mesh,type,x,y,z,ry});
-    if(type==="door"){
-        const hole=new THREE.Mesh(new THREE.BoxGeometry(0.9,2.4,0.5),new THREE.MeshStandardMaterial({color:0x111111}));
-        hole.position.set(x,y-0.2,z); hole.rotation.y=ry; scene.add(hole);
+    const g=new THREE.Group();
+    g.position.set(x,y,z); g.rotation.y=ry;
+
+    if(type==="wall"){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d), matTex(TEX.wall));
+        m.castShadow=true; m.receiveShadow=true; g.add(m);
     }
+    else if(type==="floor"){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d), matTex(TEX.floor));
+        m.receiveShadow=true; g.add(m);
+    }
+    else if(type==="roof"){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d), matTex(TEX.roof));
+        m.castShadow=true; g.add(m);
+    }
+    else if(type==="door"){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d), matTex(TEX.door));
+        m.castShadow=true; g.add(m);
+        const hole=new THREE.Mesh(new THREE.BoxGeometry(0.85,2.3,0.5),new THREE.MeshStandardMaterial({color:0x060606}));
+        hole.position.y=-0.2; g.add(hole);
+    }
+    else if(type==="stairs"){
+        const steps=6;
+        for(let i=0;i<steps;i++){
+            const sw=def.w, sh=def.h/steps, sd=def.d/steps;
+            const s=new THREE.Mesh(new THREE.BoxGeometry(sw,sh,sd), matTex(TEX.floor));
+            s.position.set(0,-def.h/2+sh/2+i*sh, -def.d/2+sd/2+i*sd);
+            s.castShadow=true; g.add(s);
+        }
+    }
+    else if(type==="tower"){
+        const m=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.3,def.h,8), matTex(TEX.stone));
+        m.castShadow=true; m.receiveShadow=true; g.add(m);
+        // зубці
+        for(let i=0;i<8;i++){
+            const a=i/8*Math.PI*2;
+            const merlon=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.6,0.35), matTex(TEX.stone));
+            merlon.position.set(Math.cos(a)*1.05,def.h/2+0.3,Math.sin(a)*1.05); g.add(merlon);
+        }
+    }
+    else if(type==="campfire"){
+        // Каміння по колу
+        for(let i=0;i<8;i++){
+            const a=i/8*Math.PI*2, r=0.45+Math.random()*0.05;
+            const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(0.13+Math.random()*0.05,0), matTex(TEX.stone));
+            stone.position.set(Math.cos(a)*r,0,Math.sin(a)*r);
+            stone.rotation.set(Math.random(),Math.random(),Math.random()); stone.castShadow=true; g.add(stone);
+        }
+        // Дрова
+        for(let i=0;i<3;i++){
+            const a=i/3*Math.PI*2;
+            const log=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.9,6), matTex(TEX.wood));
+            log.position.set(Math.cos(a)*0.2,0,Math.sin(a)*0.2);
+            log.rotation.z=Math.PI/2; log.rotation.y=a; log.castShadow=true; g.add(log);
+        }
+        // Вогонь — анімований конус
+        const fireMat=new THREE.MeshStandardMaterial({color:0xff6600,emissive:0xff3300,emissiveIntensity:1,transparent:true,opacity:0.88});
+        const fire=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.7,8), fireMat);
+        fire.position.y=0.45; fire.userData.isFlame=true; g.add(fire);
+        const inner=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.5,6), new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xffaa00,emissiveIntensity:2,transparent:true,opacity:0.7}));
+        inner.position.y=0.5; g.add(inner);
+        // Світло вогнища
+        const light=new THREE.PointLight(0xff6600,1.5,6);
+        light.position.y=0.8; g.add(light);
+        fireLights.push({light, base:1.5, mesh:fire, innerMesh:inner});
+    }
+    else if(type==="bed"){
+        // Рама
+        const frame=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.18,2.1), matTex(TEX.wood));
+        frame.position.y=-0.31; g.add(frame);
+        // Матрац
+        const mattress=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.18,1.85), new THREE.MeshStandardMaterial({color:0xf5f5dc,roughness:0.95}));
+        mattress.position.y=-0.12; g.add(mattress);
+        // Ковдра
+        const blanket=new THREE.Mesh(new THREE.BoxGeometry(0.92,0.12,1.3), new THREE.MeshStandardMaterial({color:0x4169e1,roughness:0.9}));
+        blanket.position.set(0,-0.04,0.25); g.add(blanket);
+        // Подушка
+        const pillow=new THREE.Mesh(new THREE.BoxGeometry(0.78,0.14,0.4), new THREE.MeshStandardMaterial({color:0xfffacd,roughness:0.9}));
+        pillow.position.set(0,0.01,-0.72); g.add(pillow);
+        // Узголів'я
+        const head=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.65,0.12), matTex(TEX.wood));
+        head.position.set(0,0.04,-1.0); g.add(head);
+        // Ніжки
+        [-0.48,0.48].forEach(ox=>[-0.92,0.92].forEach(oz=>{
+            const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.25,6), matTex(TEX.wood));
+            leg.position.set(ox,-0.42,oz); g.add(leg);
+        }));
+    }
+    else if(type==="chest"){
+        // Основа
+        const base=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.45,0.6), matTex(TEX.wood));
+        base.position.y=-0.1; g.add(base);
+        // Кришка
+        const lid=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.18,0.6), matTex(TEX.wood));
+        lid.position.y=0.22; g.add(lid);
+        // Золоті смуги
+        [[-0.3,0],[0,0],[0.3,0]].forEach(([ox])=>{
+            const band=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.65,0.62), new THREE.MeshStandardMaterial({color:0xc8a000,roughness:0.3,metalness:0.8}));
+            band.position.set(ox,0,0); g.add(band);
+        });
+        // Замок
+        const lock=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.16,0.08), new THREE.MeshStandardMaterial({color:0xc8a000,roughness:0.2,metalness:0.9}));
+        lock.position.set(0,0.1,0.32); g.add(lock);
+    }
+    else if(type==="table"){
+        // Стільниця
+        const top=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.08,0.9), matTex(TEX.wood));
+        top.position.y=0.36; g.add(top);
+        // 4 ніжки
+        [-0.55,0.55].forEach(ox=>[-0.36,0.36].forEach(oz=>{
+            const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.75,6), matTex(TEX.wood));
+            leg.position.set(ox,0,oz); g.add(leg);
+        }));
+    }
+    else if(type==="fence"){
+        // 2 горизонтальні рейки
+        [0.55,0.2].forEach(oy=>{
+            const rail=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.08,0.08), matTex(TEX.wood));
+            rail.position.y=oy; g.add(rail);
+        });
+        // Кілки
+        [-0.9,-0.3,0.3,0.9].forEach(ox=>{
+            const post=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.85,0.1), matTex(TEX.wood));
+            const tip=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.2,4), matTex(TEX.wood));
+            tip.position.y=0.52; post.position.set(ox,0.03,0);
+            const pGroup=new THREE.Group(); pGroup.position.set(ox,0.03,0); pGroup.add(post); pGroup.add(tip);
+            // easier just add directly:
+            const pk=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.85,0.1), matTex(TEX.wood));
+            pk.position.set(ox,0.03,0); g.add(pk);
+            const pk2=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.2,4), matTex(TEX.wood));
+            pk2.position.set(ox,0.52,0); g.add(pk2);
+        });
+    }
+    else if(type==="window"){
+        // Рама
+        const frame=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,0.12), matTex(TEX.wood));
+        g.add(frame);
+        // Скло
+        const glass=new THREE.Mesh(new THREE.BoxGeometry(1.0,1.0,0.06), new THREE.MeshStandardMaterial({color:0xaaddff,transparent:true,opacity:0.35,roughness:0,metalness:0.1}));
+        g.add(glass);
+        // Горизонтальна перекладина
+        const hb=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.07,0.14), matTex(TEX.wood));
+        g.add(hb);
+        // Вертикальна перекладина
+        const vb=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.0,0.14), matTex(TEX.wood));
+        g.add(vb);
+    }
+    else if(type==="torch"){
+        // Палиця
+        const stick=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.65,6), matTex(TEX.wood));
+        stick.position.y=0; g.add(stick);
+        // Вогник
+        const fireMat2=new THREE.MeshStandardMaterial({color:0xff6600,emissive:0xff4400,emissiveIntensity:2,transparent:true,opacity:0.85});
+        const flame=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.28,6), fireMat2);
+        flame.position.y=0.46; flame.userData.isFlame=true; g.add(flame);
+        const tLight=new THREE.PointLight(0xff8800,1.2,5);
+        tLight.position.y=0.55; g.add(tLight);
+        fireLights.push({light:tLight, base:1.2, mesh:flame, innerMesh:null});
+    }
+    else {
+        // Fallback для невідомих типів
+        const m=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d), new THREE.MeshStandardMaterial({color:0xbc8a5f,roughness:0.9}));
+        m.castShadow=true; g.add(m);
+    }
+
+    g.traverse(c=>{ if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; } });
+    scene.add(g);
+    // Зберігаємо "mesh" як групу для raycast
+    placedBuildings.push({mesh:g,type,x,y,z,ry,interact:def.interact||false});
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -873,6 +1151,7 @@ const RECIPES=[
     {id:"arrow", name:"Стріли×5",icon:"🪃", cost:{wood:2,stone:1},         desc:"Для лука", gives:{arrow:5}},
     {id:"food",  name:"Їжа ×3",  icon:"🍖", cost:{wood:2},                 desc:"Відновлює голод", gives:{food:3}},
     {id:"food",  name:"Смажене м'ясо",icon:"🥩",cost:{meat:1,coal:1},      desc:"+40 HP", gives:{food:2}, heals:40},
+    {id:"metal", name:"Метал ×2",icon:"⚙️", cost:{stone:3,coal:1},         desc:"Переплавка каменю", gives:{metal:2}},
 ];
 
 function renderInv(){
@@ -956,6 +1235,8 @@ function doAction(){
     if(isDead) return;
     if(buildMode){ placeBuilding(); return; }
     const now=performance.now(); if(now-lastAction<600) return; lastAction=now;
+    // Спочатку перевіряємо взаємодію з будівлями
+    if(tryInteract()) return;
     castRay();
     if(tPlayer){ const dmg=inv.sword>0?40:inv.spear>0?25:charDmg(); broadcast({type:"pvp_hit",target:tPlayer.pid,dmg,from:myNick}); showFloat("⚔️ -"+dmg); return; }
     if(tTree){ shake(tTree.group); tTree.hp--; if(tTree.hp<=0) fellTree(tTree); return; }
@@ -1148,6 +1429,15 @@ function gameLoop(){
             else if(hostConn){try{hostConn.send(JSON.stringify({type:"pos",...pd}));}catch(e){}}
         }
     }
+
+    // 🔥 Анімація вогню — мерехтіння
+    const ft=now*0.003;
+    fireLights.forEach(fl=>{
+        const flicker=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;
+        fl.light.intensity=fl.base*flicker;
+        if(fl.mesh){ fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18; fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12; fl.mesh.position.y=fl.mesh.position.y; }
+        if(fl.innerMesh){ fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22; }
+    });
 
     // Remote players
     for(const [pid,rp] of Object.entries(remotePlayers)){
