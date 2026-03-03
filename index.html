@@ -342,7 +342,7 @@ const TEX={
 };
 function matTex(tex,color=0xffffff,rough=0.9){return new THREE.MeshStandardMaterial({map:tex,color,roughness:rough});}
 const BDEFS={wall:{cost:{wood:3,stone:2},w:3,h:3,d:0.3,snap:true},floor:{cost:{wood:4},w:3,h:0.2,d:3,snap:true},door:{cost:{wood:5},w:1.2,h:2.8,d:0.3},roof:{cost:{wood:6,stone:1},w:3,h:0.4,d:3,snap:true},stairs:{cost:{wood:4,stone:1},w:1.5,h:2,d:3,isStairs:true},tower:{cost:{wood:6,stone:8},w:2,h:6,d:2},campfire:{cost:{wood:3},w:1,h:0.6,d:1,interact:true,noCollide:true},bed:{cost:{wood:6,fiber:4},w:1,h:0.8,d:2,interact:true},chest:{cost:{wood:4,metal:2},w:0.8,h:0.6,d:0.6},table:{cost:{wood:4},w:1.2,h:0.8,d:0.8},fence:{cost:{wood:2},w:2,h:1,d:0.15},window:{cost:{wood:2,stone:1},w:1.2,h:1.2,d:0.15,noCollide:true},torch:{cost:{wood:1,fiber:1},w:0.1,h:0.8,d:0.1,noCollide:true},workbench:{cost:{wood:6,stone:2},w:1.5,h:1,d:1},scaffold:{cost:{wood:8},w:2,h:4,d:0.4},barrel:{cost:{wood:4,metal:1},w:0.6,h:1,d:0.6},anvil:{cost:{metal:6,stone:3},w:0.7,h:0.7,d:0.5},well:{cost:{stone:8,wood:4},w:1.5,h:2,d:1.5,noCollide:true},lamp:{cost:{metal:2,fiber:1},w:0.15,h:2.5,d:0.15,noCollide:true}};
-let buildMode=false,selBldType='wall',ghostMesh=null,movingBld=null;
+let buildMode=false,selBldType='wall',ghostMesh=null,movingBld=-1;
 const placed=[],fireLights=[];
 function toggleBuild(){buildMode=!buildMode;document.getElementById('buildTb').classList.toggle('on',buildMode);document.getElementById('buildBar').classList.toggle('on',buildMode);document.getElementById('actBtn').textContent=buildMode?'🏗️':'🪓';if(!buildMode&&ghostMesh){scene.remove(ghostMesh);ghostMesh=null;}showFloat(buildMode?'🔨 Режим будівництва':'🪓 Режим видобутку');}
 function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.classList.toggle('sel',s.dataset.b===t));}
@@ -397,15 +397,16 @@ function updateGhost(){
     ghostMesh.position.set(px,gy+1,pz);
     ghostMesh.rotation.y=yaw;
   }else{
-    // Other objects: sit on terrain
-    ghostMesh.position.set(px,gy+def.h/2,pz);
+    // Other objects: sit on floor if nearby, else terrain
+    const objBaseY=nearbyY!==null?nearbyY+BDEFS['floor'].h/2:gy;
+    ghostMesh.position.set(px,objBaseY+def.h/2,pz);
     ghostMesh.rotation.y=snappedRy;
   }
 }
 function nearestBld(md=6){let best=null,bd=md;RAY.setFromCamera(CTR,camera);for(let i=0;i<placed.length;i++){if(!placed[i].mesh.parent)continue;const h=RAY.intersectObject(placed[i].mesh,true);if(h.length&&h[0].distance<bd){bd=h[0].distance;best=i;}}return best;}
 function tryInteract(){const idx=nearestBld(3);if(idx===null)return false;const b=placed[idx],bp=b.mesh.position;if(Math.sqrt((playerPos.x-bp.x)**2+(playerPos.z-bp.z)**2)>3.5)return false;if(b.type==='bed'){playerHP=Math.min(maxHP,playerHP+30);hunger=Math.min(100,hunger+10);updHP();showFloat('🛏️ +30 HP');return true;}if(b.type==='campfire'){if(inv.meat>=1&&inv.coal>=1){inv.meat--;inv.coal--;playerHP=Math.min(maxHP,playerHP+40);hunger=Math.min(100,hunger+50);updHP();renderInv();showFloat('🥩 +40 HP');}else showFloat('❌ Потрібно м\'ясо + вугілля');return true;}if(b.type==='workbench'){showFloat('🔧 Верстак активовано');return true;}if(b.type==='anvil'){if(inv.metal>=2){inv.metal-=2;inv.sword++;showFloat('⚒️ Меч wykuty!');}else showFloat('❌ Потрібно метал×2');return true;}if(b.type==='well'){hunger=Math.min(100,hunger+20);playerHP=Math.min(maxHP,playerHP+10);showFloat('⛲ +10 HP');return true;}return false;}
 function placeBuilding(){if(!buildMode)return;if(selBldType==='__break'){const idx=nearestBld();if(idx===null){showFloat('❌ Наведи на споруду');return;}const b=placed[idx],def=BDEFS[b.type];if(def)Object.entries(def.cost).forEach(([k,v])=>inv[k]+=Math.floor(v*0.5));scene.remove(b.mesh);placed.splice(idx,1);broadcast({type:'build_remove',idx});showFloat('💥 Зламано!');renderInv();return;}if(selBldType==='__move'){
-  if(!movingBld){
+  if(movingBld===-1){
     // First tap: pick up building under crosshair
     const idx=nearestBld();
     if(idx===null){showFloat('❌ Наведи на споруду');return;}
@@ -430,7 +431,7 @@ function placeBuilding(){if(!buildMode)return;if(selBldType==='__break'){const i
     b.x=gx;b.y=gy;b.z=gz;
     broadcast({type:'build_move',idx:movingBld,x:gx,y:gy,z:gz});
     scene.remove(ghostMesh);ghostMesh=null;
-    movingBld=null;
+    movingBld=-1;
     showFloat('✅ Переміщено!');
   }
   return;
@@ -753,10 +754,10 @@ function gameLoop(){
       }
     }
     updHunger(dt);updateSky(dt);
-    if(!buildMode){castRay();updTgt(tTree);}else{if(selBldType!=='__move'||!movingBld)updateGhost();else if(ghostMesh){
+    if(!buildMode){castRay();updTgt(tTree);}else{if(selBldType!=='__move'||movingBld===-1)updateGhost();else if(ghostMesh){
   // move ghost with snap - same logic as updateGhost
   const dist=2.5,px=camera.position.x-Math.sin(yaw)*dist,pz=camera.position.z-Math.cos(yaw)*dist;
-  const btype=placed[movingBld]?placed[movingBld].type:null;
+  const btype=movingBld!==-1&&placed[movingBld]?placed[movingBld].type:null;
   const def2=BDEFS[btype];const h2=def2?def2.h:1;
   const gy2=getH(px,pz);
   const nearbyY2=getNearbyFloorY(px,pz);
