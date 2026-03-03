@@ -1000,7 +1000,7 @@ function toggleMinimap(){
   document.getElementById('mmClose').textContent=minimapVisible?'✕ карта':'🗺️ карта';
   mm.style.width=minimapVisible?'110px':'auto';
 }
-let lastT=performance.now(),lastSync=0,legPh=0,mmTick=0;
+let lastT=performance.now(),lastSync=0,legPh=0,mmTick=0,loopRunning=false;
 function startGame(){
   const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;
   playerPos.set(Math.random()*10-5,5,Math.random()*10-5);
@@ -1014,6 +1014,7 @@ function startGame(){
 function gameLoop(){
   requestAnimationFrame(gameLoop);
   const now=performance.now(),dt=Math.min((now-lastT)/1000,0.1);lastT=now;
+  updateSky(dt);
   if(!isDead){
     let mx=0,mz=0;
     if(joyOn){const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JDEAD){mx=jdX/JMAX;mz=-jdY/JMAX;}}
@@ -1033,7 +1034,7 @@ function gameLoop(){
     else if(camMode===2){camera.position.set(playerPos.x+Math.sin(yaw)*3.2,playerPos.y+1.4,playerPos.z+Math.cos(yaw)*3.2);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));}
     else{camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
     if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;myMesh.visible=(camMode===1||camMode===2);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}
-    updHunger(dt);updateSky(dt);checkPickup();
+    updHunger(dt);checkPickup();
     if(!buildMode){castRay();updTgt(tTree);}
     else{
       if(selBldType==='__move'&&movingBld!==-1){
