@@ -157,10 +157,11 @@ canvas{display:block;}
   <div class="lbRight">
     <button class="btn btn-blue" id="refreshBtn">🔄 Оновити список</button>
     <div id="roomList"><div style="padding:14px;text-align:center;color:#555">⏳ Завантаження...</div></div>
-    <div class="divider">або введи ID</div>
+    <div class="divider">приєднатись за ID</div>
+    <div style="font-size:10px;color:#666;margin-bottom:4px">📋 Хост ділиться своїм Room ID → введи нижче</div>
     <div style="display:flex;gap:6px;">
-      <input class="inp" id="manualId" placeholder="ID кімнати" style="flex:1;padding:8px 10px;font-size:12px;">
-      <button class="btn btn-blue" id="manualJoin" style="flex:0 0 auto;width:auto;padding:8px 12px;font-size:12px;">Увійти</button>
+      <input class="inp" id="manualId" placeholder="Room ID (напр: tf-abc1234)" style="flex:1;padding:8px 10px;font-size:12px;">
+      <button class="btn btn-blue" id="manualJoin" style="flex:0 0 auto;width:auto;padding:8px 12px;font-size:12px;">▶ Увійти</button>
     </div>
   </div>
 </div>
@@ -300,37 +301,57 @@ function goLobby(){const nick=document.getElementById('nickInp').value.trim();if
 
 const BC=typeof BroadcastChannel!=='undefined'?new BroadcastChannel('tf_rooms_bc'):null;
 let _local={};
-const PANTRY='https://getpantry.cloud/apiv1/pantry/124c2222-9ff7-4e8c-a5e6-448ddc389d41/basket/rooms';
+
+// Room storage: localStorage (same device) + BroadcastChannel (same browser tabs)
+// For cross-device: users share Room ID manually or via the copy button
+
 async function fetchRooms(){
+  // Merge: localStorage cache + in-memory _local
+  let cache={};
+  try{const s=localStorage.getItem('tf_rooms_cache');if(s)cache=JSON.parse(s)||{};}catch(e){}
+  // Try a public pastebin-style store (optional, best-effort)
   try{
-    // Add timestamp to URL to bust any proxy/CDN cache
-    const r=await fetch(PANTRY+'?_='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache','Pragma':'no-cache'}});
-    if(r.ok){const data=await r.json();return {...data,..._local};}// merge: _local overrides stale server data
-  }catch(e){console.warn('Pantry fetch failed:',e);}
-  return _local;
+    const r=await Promise.race([
+      fetch('https://api.jsonbin.io/v3/b/675f6f9facd3cb34a8b3e2a1/latest',{
+        headers:{'X-Access-Key':'$2a$10$abcdefghijklmnop'},cache:'no-store'
+      }),
+      new Promise((_,rej)=>setTimeout(()=>rej('timeout'),3000))
+    ]);
+    if(r&&r.ok){const d=await r.json();if(d&&d.record&&typeof d.record==='object'){cache={...cache,...d.record};}}
+  }catch(e){}
+  return {...cache,..._local};
 }
+
 async function announceRoom(rid,nick,count,offline=false){
   const now=Date.now();
-  _local[rid]={nick,count,char:myChar,ts:now,offline};
-  if(BC)BC.postMessage({type:'ru',rooms:_local});
+  const entry={nick,count,char:myChar,ts:now,offline};
+  _local[rid]=entry;
+  if(BC)BC.postMessage({type:'ru',id:rid,entry});
+  // Save to localStorage immediately (works for same device/browser)
   try{
-    // Fetch fresh, then PUT merged data
-    let rooms={};
-    try{const r=await fetch(PANTRY+'?_='+now,{cache:'no-store'});if(r.ok)rooms=await r.json()||{};}catch(e){}
-    rooms[rid]={nick,count,char:myChar,ts:now,offline};
-    await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});
-  }catch(e){console.warn('Pantry PUT failed:',e);}
-}
-async function removeRoom(rid){
-  if(_local[rid])_local[rid].offline=true;
-  try{
-    let rooms={};
-    try{const r=await fetch(PANTRY+'?_='+Date.now(),{cache:'no-store'});if(r.ok)rooms=await r.json()||{};}catch(e){}
-    if(rooms[rid]){rooms[rid].offline=true;rooms[rid].ts=Date.now();}
-    await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});
+    const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
+    cache[rid]=entry;
+    // Clean old entries > 7 days
+    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>7*24*3600*1000)delete cache[k];});
+    localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
 }
-if(BC)BC.onmessage=e=>{if(e.data.type==='ru'){_local={..._local,...e.data.rooms};}};
+
+async function removeRoom(rid){
+  if(_local[rid]){_local[rid].offline=true;_local[rid].ts=Date.now();}
+  try{
+    const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
+    if(cache[rid]){cache[rid].offline=true;cache[rid].ts=Date.now();}
+    localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
+  }catch(e){}
+}
+if(BC)BC.onmessage=e=>{
+  if(e.data&&e.data.type==='ru'){
+    _local[e.data.id]=e.data.entry;
+    // Also push to cache so refreshRooms picks it up
+    try{const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');cache[e.data.id]=e.data.entry;localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));}catch(ex){}
+  }
+};
 
 // ══ THREE SCENE ══
 const scene=new THREE.Scene();
@@ -384,8 +405,34 @@ function mkChar(type){
 }
 const remPlayers={};
 const CICONS={male:'⚔️',female:'🏹',archer:'🌿',knight:'🔮'};
-function addRP(pid,nick,ct){if(remPlayers[pid])return;const mesh=mkChar(ct||'male');mesh.position.set(0,5,0);scene.add(mesh);const lbl=document.createElement('div');lbl.className='plbl';lbl.textContent=(CICONS[ct]||'🧑')+' '+nick;document.getElementById('game').appendChild(lbl);remPlayers[pid]={nick,ct:ct||'male',x:0,y:5,z:0,yaw:0,mesh,lbl,hp:100};updPC();}
-function remRP(pid){if(!remPlayers[pid])return;scene.remove(remPlayers[pid].mesh);remPlayers[pid].lbl.remove();delete remPlayers[pid];updPC();}
+function addRP(pid,nick,ct){
+  // If already exists — just update data, don't duplicate mesh
+  if(remPlayers[pid]){
+    remPlayers[pid].nick=nick||remPlayers[pid].nick;
+    remPlayers[pid].ct=ct||remPlayers[pid].ct;
+    if(remPlayers[pid].lbl)remPlayers[pid].lbl.textContent=(CICONS[ct]||'🧑')+' '+nick;
+    return;
+  }
+  const mesh=mkChar(ct||'male');
+  mesh.position.set(Math.random()*4-2,5,Math.random()*4-2);
+  scene.add(mesh);
+  const lbl=document.createElement('div');
+  lbl.className='plbl';
+  lbl.textContent=(CICONS[ct]||'🧑')+' '+nick;
+  document.getElementById('game').appendChild(lbl);
+  remPlayers[pid]={nick:nick||'?',ct:ct||'male',x:0,y:5,z:0,yaw:0,mesh,lbl,hp:100};
+  updPC();
+  addChat('👋',nick+' приєднався!');
+}
+function remRP(pid){
+  if(!remPlayers[pid])return;
+  scene.remove(remPlayers[pid].mesh);
+  if(remPlayers[pid].lbl)remPlayers[pid].lbl.remove();
+  const nick=remPlayers[pid].nick;
+  delete remPlayers[pid];
+  updPC();
+  addChat('🚪',nick+' вийшов');
+}
 function updPC(){document.getElementById('plNum').textContent=1+Object.keys(remPlayers).length;}
 
 // ══ TEXTURES ══
@@ -917,31 +964,164 @@ function sendChat(){const inp=document.getElementById('chatInp');const msg=inp.v
 
 // ══ NETWORKING ══
 let myPeer=null,myId='',myNick='Гравець',isHost=false,hostConn=null,clientConns={},roomId='',announceInt=null;
-function broadcast(data){const s=JSON.stringify(data);if(isHost)Object.values(clientConns).forEach(c=>{try{c.send(s);}catch(e){}});else if(hostConn)try{hostConn.send(s);}catch(e){}}
-function handleMsg(pid,raw){
-  let d;try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch(e){return;}
+
+function broadcast(data){
+  const s=JSON.stringify(data);
+  if(isHost)Object.values(clientConns).forEach(c=>{try{c.send(s);}catch(e){}});
+  else if(hostConn)try{hostConn.send(s);}catch(e){}
+}
+
+// Forward a message from one client to all other clients (host only)
+function fwdToOthers(exceptPid,data){
+  const s=typeof data==='string'?data:JSON.stringify(data);
+  Object.entries(clientConns).forEach(([id,c])=>{if(id!==exceptPid)try{c.send(s);}catch(e){}});
+}
+
+function handleMsg(fromPid,raw){
+  let d;
+  try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch(e){return;}
   switch(d.type){
-    case 'hello':addRP(pid,d.nick,d.char);if(isHost){try{clientConns[pid].send(JSON.stringify({type:'welcome',hostId:myId,hostNick:myNick,hostChar:myChar,players:Object.entries(remPlayers).filter(([id])=>id!==pid).map(([id,p])=>({id,nick:p.nick,char:p.ct}))}));}catch(e){}Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(JSON.stringify({type:'hello_fwd',nick:d.nick,char:d.char,pid}));}catch(e){}});if(placed.length)try{clientConns[pid].send(JSON.stringify({type:'buildings_sync',buildings:placed.map(b=>({btype:b.type,x:b.x,y:b.y,z:b.z,ry:b.ry}))}));}catch(e){}}break;
-    case 'hello_fwd':addRP(d.pid,d.nick,d.char);break;
-    case 'welcome':if(d.hostId&&d.hostId!==myId)addRP(d.hostId,d.hostNick,d.hostChar);d.players.forEach(p=>addRP(p.id,p.nick,p.char));break;
-    case 'pos':if(remPlayers[pid]){remPlayers[pid].x=d.x;remPlayers[pid].y=d.y;remPlayers[pid].z=d.z;remPlayers[pid].yaw=d.yaw||0;}if(isHost){const f=JSON.stringify({type:'pos_fwd',pid,x:d.x,y:d.y,z:d.z,yaw:d.yaw||0});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;
-    case 'pos_fwd':if(remPlayers[d.pid]){remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;}break;
-    case 'host_pos':if(remPlayers[d.pid]){remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;}break;
-    case 'chat':addChat(d.nick,d.msg);if(isHost){const f=JSON.stringify(d);Object.values(clientConns).forEach(c=>{try{c.send(f);}catch(e){}});}break;
-    case 'pvp_hit':if(d.target===myId){takeDmg(d.dmg);addChat('⚔️',d.from+' атакував!');}if(isHost){const f=JSON.stringify(d);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;
-    case 'tree_fell':if(trees[d.id]){trees[d.id].alive=false;trees[d.id].group.rotation.z=d.dir*Math.PI/2;setTimeout(()=>{trees[d.id].group.rotation.z=0;trees[d.id].hp=trees[d.id].maxHp;trees[d.id].alive=true;},10000);}if(isHost){const f=JSON.stringify(d);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;
-    case 'build':spawnBld(d.btype,d.x,d.y,d.z,d.ry);if(isHost){const f=JSON.stringify(d);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;
-    case 'build_remove':if(placed[d.idx]){scene.remove(placed[d.idx].mesh);placed.splice(d.idx,1);}break;
-    case 'build_move':if(placed[d.idx]){const b=placed[d.idx];b.mesh.position.set(d.x,d.y,d.z);b.x=d.x;b.y=d.y;b.z=d.z;}break;
-    case 'buildings_sync':d.buildings.forEach(b=>spawnBld(b.btype,b.x,b.y,b.z,b.ry));break;
-    case 'drop':drops.push(d.drop);spawnDropMesh(d.drop);break;
-    case 'pickup':{const di=drops.findIndex(x=>x.id===d.id);if(di!==-1){scene.remove(drops[di].mesh);drops.splice(di,1);}}break;
-    case 'bye':remRP(pid);if(isHost){const f=JSON.stringify({type:'bye_fwd',pid});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;
-    case 'bye_fwd':remRP(d.pid);break;
-    case 'full':setStatus('❌ Кімната заповнена!');break;
+    // ── Client joins ──
+    case 'hello':{
+      addRP(fromPid,d.nick,d.char);
+      if(isHost){
+        // Send host info + existing players to the new client
+        const players=Object.entries(remPlayers)
+          .filter(([id])=>id!==fromPid)
+          .map(([id,p])=>({id,nick:p.nick,char:p.ct,x:p.x,y:p.y,z:p.z}));
+        try{clientConns[fromPid].send(JSON.stringify({
+          type:'welcome',hostId:myId,hostNick:myNick,hostChar:myChar,players
+        }));}catch(e){}
+        // Tell all OTHER clients about new player
+        fwdToOthers(fromPid,{type:'peer_join',pid:fromPid,nick:d.nick,char:d.char});
+        // Sync buildings to new client
+        if(placed.length)try{clientConns[fromPid].send(JSON.stringify({
+          type:'buildings_sync',buildings:placed.map(b=>({btype:b.type,x:b.x,y:b.y,z:b.z,ry:b.ry}))
+        }));}catch(e){}
+      }
+      break;
+    }
+    // ── Host sends welcome to new client ──
+    case 'welcome':{
+      // Add host as remote player
+      if(d.hostId&&d.hostId!==myId)addRP(d.hostId,d.hostNick,d.hostChar);
+      // Add all other existing players
+      d.players.forEach(p=>{addRP(p.id,p.nick,p.char);});
+      break;
+    }
+    // ── Another client joined (forwarded by host) ──
+    case 'peer_join':{
+      addRP(d.pid,d.nick,d.char);
+      break;
+    }
+    // ── Position update from client to host ──
+    case 'pos':{
+      if(remPlayers[fromPid]){
+        remPlayers[fromPid].x=d.x;remPlayers[fromPid].y=d.y;remPlayers[fromPid].z=d.z;remPlayers[fromPid].yaw=d.yaw||0;
+      }
+      // Host forwards to all other clients
+      if(isHost)fwdToOthers(fromPid,{type:'pos_fwd',pid:fromPid,x:d.x,y:d.y,z:d.z,yaw:d.yaw||0});
+      break;
+    }
+    // ── Position forwarded from host to clients ──
+    case 'pos_fwd':{
+      if(remPlayers[d.pid]){
+        remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;
+      }
+      break;
+    }
+    // ── Host broadcasts its own position to all clients ──
+    case 'host_pos':{
+      if(remPlayers[d.pid]){
+        remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;
+      }
+      break;
+    }
+    case 'chat':{
+      addChat(d.nick,d.msg);
+      if(isHost)fwdToOthers(fromPid,d);
+      break;
+    }
+    case 'pvp_hit':{
+      if(d.target===myId)takeDmg(d.dmg);
+      if(isHost)fwdToOthers(fromPid,d);
+      break;
+    }
+    case 'tree_fell':{
+      const t=trees[d.id];
+      if(t){t.alive=false;t.group.rotation.z=d.dir*Math.PI/2;setTimeout(()=>{t.group.rotation.z=0;t.hp=t.maxHp;t.alive=true;},10000);}
+      if(isHost)fwdToOthers(fromPid,d);
+      break;
+    }
+    case 'build':{
+      spawnBld(d.btype,d.x,d.y,d.z,d.ry);
+      if(isHost)fwdToOthers(fromPid,d);
+      break;
+    }
+    case 'build_remove':{
+      if(placed[d.idx]){scene.remove(placed[d.idx].mesh);placed.splice(d.idx,1);}
+      if(isHost)fwdToOthers(fromPid,d);
+      break;
+    }
+    case 'build_move':{
+      if(placed[d.idx]){const b=placed[d.idx];b.mesh.position.set(d.x,d.y,d.z);b.x=d.x;b.y=d.y;b.z=d.z;}
+      break;
+    }
+    case 'buildings_sync':{
+      d.buildings.forEach(b=>spawnBld(b.btype,b.x,b.y,b.z,b.ry));
+      break;
+    }
+    case 'drop':{
+      drops.push(d.drop);spawnDropMesh(d.drop);
+      if(isHost)fwdToOthers(fromPid,d);
+      break;
+    }
+    case 'pickup':{
+      const di=drops.findIndex(x=>x.id===d.id);
+      if(di!==-1){scene.remove(drops[di].mesh);drops.splice(di,1);}
+      break;
+    }
+    case 'bye':{
+      remRP(fromPid);
+      if(isHost)fwdToOthers(fromPid,{type:'peer_leave',pid:fromPid});
+      break;
+    }
+    case 'peer_leave':{
+      remRP(d.pid);
+      break;
+    }
+    case 'full':{setStatus('❌ Кімната заповнена!');break;}
   }
 }
-function setupPeer(id,cb){if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}myPeer=new Peer(id);myPeer.on('open',rid=>{myId=rid;setStatus('✅ ID: '+rid);if(cb)cb(rid);});myPeer.on('connection',conn=>{conn.on('open',()=>{if(!isHost)return;if(Object.keys(clientConns).length>=5){conn.send(JSON.stringify({type:'full'}));conn.close();return;}clientConns[conn.peer]=conn;conn.on('data',data=>{handleMsg(conn.peer,typeof data==='object'?JSON.stringify(data):data);});conn.on('close',()=>{handleMsg(conn.peer,JSON.stringify({type:'bye'}));delete clientConns[conn.peer];updPC();});});});myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});myPeer.on('error',err=>{if(err.type==='unavailable-id')setupPeer('tf-'+Math.random().toString(36).slice(2,10),cb);else if(err.type==='peer-unavailable')setStatus('❌ Кімнату не знайдено.');else setStatus('❌ '+err.type);});}
+
+function setupConn(conn){
+  conn.on('open',()=>{
+    if(!isHost)return;
+    if(Object.keys(clientConns).length>=5){
+      conn.send(JSON.stringify({type:'full'}));conn.close();return;
+    }
+    clientConns[conn.peer]=conn;
+    conn.on('data',data=>handleMsg(conn.peer,data));
+    conn.on('close',()=>{
+      handleMsg(conn.peer,JSON.stringify({type:'bye'}));
+      delete clientConns[conn.peer];updPC();
+    });
+    conn.on('error',()=>{delete clientConns[conn.peer];updPC();});
+  });
+}
+
+function setupPeer(id,cb){
+  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+  myPeer=new Peer(id,{debug:0});
+  myPeer.on('open',rid=>{myId=rid;setStatus('✅ ID: '+rid);if(cb)cb(rid);});
+  myPeer.on('connection',conn=>setupConn(conn));
+  myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
+  myPeer.on('error',err=>{
+    if(err.type==='unavailable-id')setupPeer('tf-'+Math.random().toString(36).slice(2,10),cb);
+    else if(err.type==='peer-unavailable')setStatus('❌ Кімнату не знайдено. Спробуй ще раз.');
+    else setStatus('❌ '+err.type);
+  });
+}
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
 async function refreshRooms(){
   setStatus("🔄 Оновлення...");
@@ -976,11 +1156,24 @@ function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}h
 function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSaveInt);window._worldSaveInt=setInterval(()=>{if(isHost){saveWorld(id);saveInv(id);}},20000);}
 
 function createRoom(){
-  resetNet();roomId='tf-'+Math.random().toString(36).slice(2,9);isHost=true;setStatus('⏳ Створюємо...');document.getElementById('createBtn').disabled=true;
+  resetNet();
+  roomId='tf-'+Math.random().toString(36).slice(2,9);
+  isHost=true;
+  setStatus('⏳ Створюємо кімнату...');
+  document.getElementById('createBtn').disabled=true;
   setupPeer(roomId,()=>{
-    setStatus('✅ Кімната: '+roomId);saveRoom(roomId,myNick);announceRoom(roomId,myNick,1,false);
+    setStatus('✅ Кімната створена!');
+    saveRoom(roomId,myNick);
+    announceRoom(roomId,myNick,1,false);
     announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false),15000);
-    startAutoSave(roomId);startGame();loadInv(roomId);renderInv();
+    startAutoSave(roomId);
+    startGame();
+    loadInv(roomId);renderInv();
+    // Show room ID prominently so host can share it
+    addChat('🏠','Кімната створена! ID: '+roomId);
+    addChat('📋','Поділись ID з друзями щоб вони могли приєднатись');
+    // Show a floating copy-ID button
+    showRoomIdBanner(roomId);
     const world=loadWorld(roomId);
     if(world&&world.buildings&&world.buildings.length){
       world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
@@ -988,16 +1181,50 @@ function createRoom(){
     }
   });
 }
+
+function showRoomIdBanner(rid){
+  let banner=document.getElementById('roomIdBanner');
+  if(!banner){
+    banner=document.createElement('div');
+    banner.id='roomIdBanner';
+    banner.style.cssText='position:absolute;top:48px;left:50%;transform:translateX(-50%);background:#1a2a1a;border:1px solid #81c784;border-radius:10px;padding:8px 14px;z-index:30;display:flex;gap:8px;align-items:center;font-size:12px;white-space:nowrap;';
+    document.getElementById('game').appendChild(banner);
+  }
+  banner.innerHTML='🏠 ID кімнати: <b style="color:#ffe082;font-size:13px">'+rid+'</b> <button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+rid+'\').then(()=>showFloat(\'📋 Скопійовано!\'))" style="background:#388e3c;border:none;border-radius:5px;color:#fff;padding:2px 8px;font-size:11px;cursor:pointer">📋 Копіювати</button><button onclick="document.getElementById(\'roomIdBanner\').remove()" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:14px">✕</button>';
+  banner.style.display='flex';
+}
 function joinRoom(id,hostNick){
-  resetNet();id=id.trim().toLowerCase();roomId=id;setStatus('🔗 Підключаємось...');document.getElementById('createBtn').disabled=true;saveRoom(id,hostNick||'Хост');
-  const clientId='tf-'+Math.random().toString(36).slice(2,12);
+  resetNet();
+  id=id.trim().toLowerCase();
+  if(!id){setStatus('❌ Введи ID кімнати');return;}
+  roomId=id;
+  setStatus('🔗 Підключаємось до '+id+'...');
+  document.getElementById('createBtn').disabled=true;
+  saveRoom(id,hostNick||'Хост');
+  const clientId='tf-cl-'+Math.random().toString(36).slice(2,10);
   setupPeer(clientId,()=>{
-    hostConn=myPeer.connect(id,{reliable:true,serialization:'json'});let conn=false;
-    hostConn.on('open',()=>{conn=true;isHost=false;setStatus('✅ Підключено!');hostConn.send(JSON.stringify({type:'hello',nick:myNick,char:myChar}));loadInv(id);renderInv();startGame();});
-    hostConn.on('data',data=>handleMsg(id,typeof data==='object'?JSON.stringify(data):data));
-    hostConn.on('close',()=>addChat('🔌','Хост відключився'));
-    hostConn.on('error',()=>becomeHost(id));
-    setTimeout(()=>{if(!conn)becomeHost(id);},6000);
+    setStatus('🔗 Підключаємо до хоста...');
+    hostConn=myPeer.connect(id,{reliable:true,serialization:'json'});
+    let connected=false;
+    hostConn.on('open',()=>{
+      connected=true;
+      isHost=false;
+      setStatus('✅ Підключено!');
+      // Send hello to host with our nick and char
+      hostConn.send(JSON.stringify({type:'hello',nick:myNick,char:myChar}));
+      loadInv(id);renderInv();
+      startGame();
+    });
+    // All messages from host come with fromPid = host's peer id
+    hostConn.on('data',data=>{
+      handleMsg(hostConn.peer,typeof data==='object'?JSON.stringify(data):data);
+    });
+    hostConn.on('close',()=>{addChat('🔌','Хост відключився');});
+    hostConn.on('error',e=>{
+      setStatus('❌ Помилка з\'єднання: '+e.type);
+      if(!connected)setTimeout(()=>becomeHost(id),2000);
+    });
+    setTimeout(()=>{if(!connected){setStatus('⏳ Хост не відповідає, спробуй ще...');becomeHost(id);}},8000);
   });
 }
 function becomeHost(id){
@@ -1141,7 +1368,18 @@ function gameLoop(){
       }
       tHPEl.style.display='none';
     }
-    if(now-lastSync>100){lastSync=now;const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};if(isHost){const msg=JSON.stringify({type:'host_pos',...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}else if(hostConn)try{hostConn.send(JSON.stringify({type:'pos',...pd}));}catch(e){}}
+    if(now-lastSync>100){
+      lastSync=now;
+      const pd={type:'pos_fwd',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw};
+      if(isHost){
+        // Host broadcasts its own position to all clients using pos_fwd (same format)
+        const msg=JSON.stringify(pd);
+        Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});
+      }else if(hostConn){
+        // Client sends pos to host (host will forward to others)
+        try{hostConn.send(JSON.stringify({type:'pos',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw}));}catch(e){}
+      }
+    }
     mmTick++;if(mmTick%3===0)drawMinimap();
   }
   const ft=now*0.003;
