@@ -103,7 +103,7 @@ canvas{display:block;}
 #death p{color:#aaa;font-size:13px;margin-bottom:18px;}
 #respBtn{background:#c62828;border:none;border-radius:10px;color:#fff;padding:11px 30px;font-size:15px;cursor:pointer;}
 #joyZone{position:absolute;left:0;top:42px;bottom:0;width:44%;z-index:6;touch-action:none;}
-#joyBase{position:absolute;bottom:22px;left:22px;width:110px;height:110px;border-radius:50%;background:#ffffff07;border:2px solid #ffffff18;pointer-events:none;}
+#joyBase{position:absolute;bottom:170px;left:22px;width:110px;height:110px;border-radius:50%;background:#ffffff07;border:2px solid #ffffff18;pointer-events:none;}
 #joyNip{position:absolute;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#4fc3f7cc,#0d47a1cc);border:2px solid #ffffffaa;transform:translate(-50%,-50%);left:50%;top:50%;pointer-events:none;transition:opacity .1s;}
 #lookZone{position:absolute;left:44%;top:42px;right:52px;bottom:0;z-index:5;touch-action:none;}
 #actZone{position:absolute;right:0;top:42px;bottom:0;width:44%;z-index:6;touch-action:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;padding:16px 14px;gap:10px;pointer-events:none;}
@@ -349,14 +349,15 @@ function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.
 function snapG(v,g){return Math.round(v/g)*g;}
 const RAY=new THREE.Raycaster(),CTR=new THREE.Vector2(0,0);
 function getNearbyFloorY(gx,gz){
-  // Find the highest floor/roof nearby to snap building on top of it
-  let best=null;
+  // Find nearest floor/wall to snap next floor at same height
+  let best=null,bestDist=999;
   for(const b of placed){
-    if(b.type!=='floor'&&b.type!=='roof'&&b.type!=='wall')continue;
+    if(b.type!=='floor'&&b.type!=='roof')continue;
     const dist=Math.sqrt((gx-b.x)**2+(gz-b.z)**2);
-    if(dist<4){
-      const topY=b.y+(BDEFS[b.type]?BDEFS[b.type].h/2:0);
-      if(best===null||topY>best)best=topY;
+    if(dist<5&&dist<bestDist){
+      bestDist=dist;
+      // Return the Y center of that floor so next floor snaps at same Y
+      best=b.y;
     }
   }
   return best;
@@ -378,7 +379,9 @@ function updateGhost(){
   const snappedRy=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
 
   if(selBldType==='floor'){
-    ghostMesh.position.set(gx,baseY+0.1,gz);
+    // snap to same height as nearest floor, or sit on terrain
+    const floorY=nearbyY!==null?nearbyY:gy+BDEFS['floor'].h/2;
+    ghostMesh.position.set(gx,floorY,gz);
     ghostMesh.rotation.y=0;
   }else if(selBldType==='roof'){
     // Snap roof on top of walls
@@ -386,7 +389,9 @@ function updateGhost(){
     ghostMesh.position.set(gx,wallTop+def.h/2,gz);
     ghostMesh.rotation.y=0;
   }else if(selBldType==='wall'){
-    ghostMesh.position.set(gx,baseY+def.h/2,gz);
+    // sit on nearest floor surface or terrain
+    const wallBaseY=nearbyY!==null?nearbyY+BDEFS['floor'].h/2:gy;
+    ghostMesh.position.set(gx,wallBaseY+def.h/2,gz);
     ghostMesh.rotation.y=snappedRy;
   }else if(selBldType==='stairs'){
     ghostMesh.position.set(px,gy+1,pz);
@@ -451,8 +456,8 @@ const JDEAD=12,JMAX=52;
 function updNip(){joyNip.style.left=(50+Math.max(-1,Math.min(1,jdX/JMAX))*38)+'%';joyNip.style.top=(50+Math.max(-1,Math.min(1,jdY/JMAX))*38)+'%';joyNip.style.opacity=joyOn?'1':'0.5';}
 joyZone.addEventListener('touchstart',e=>{e.preventDefault();if(joyOn)return;const t=e.changedTouches[0];joyOn=true;joyId=t.identifier;jsX=t.clientX;jsY=t.clientY;jdX=0;jdY=0;const r=joyZone.getBoundingClientRect();joyBase.style.left=(t.clientX-r.left-55)+'px';joyBase.style.top=(t.clientY-r.top-55)+'px';joyBase.style.bottom='auto';updNip();},{passive:false});
 joyZone.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier!==joyId)continue;jdX=t.clientX-jsX;jdY=t.clientY-jsY;const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JMAX){jdX=jdX/m*JMAX;jdY=jdY/m*JMAX;}updNip();}},{passive:false});
-joyZone.addEventListener('touchend',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===joyId){joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='22px';updNip();}}},{passive:false});
-joyZone.addEventListener('touchcancel',e=>{joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='22px';updNip();},{passive:false});
+joyZone.addEventListener('touchend',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===joyId){joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='170px';updNip();}}},{passive:false});
+joyZone.addEventListener('touchcancel',e=>{joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='170px';updNip();},{passive:false});
 const lookZone=document.getElementById('lookZone');
 lookZone.style.pointerEvents='all';
 let lookId=-1,lTX=0,lTY=0;
