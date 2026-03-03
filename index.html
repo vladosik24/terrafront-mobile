@@ -631,36 +631,131 @@ const playerPos=new THREE.Vector3(0,5,0);
 const PRAD=0.45;
 function checkWall(nx,nz,py){for(const b of placed){if(b.noCollide||b.isStairs)continue;const def=BDEFS[b.type];if(!def)continue;const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);const dx=nx-b.x,dz=nz-b.z;const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;const bTop=b.y+def.h/2,bBot=b.y-def.h/2;if(py<bBot-0.2||py>bTop+0.3)continue;if(Math.abs(lx)<def.w/2+PRAD&&Math.abs(lz)<def.d/2+PRAD)return true;}return false;}
 let lastT=performance.now(),lastSync=0,legPh=0;
-function startGame(){const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;playerPos.set(Math.random()*10-5,5,Math.random()*10-5);myMesh=mkChar(myChar);myMesh.visible=false;scene.add(myMesh);document.getElementById('lobby').style.display='none';document.getElementById('game').style.display='block';addChat('🏠',isHost?`Ти хост. ID: ${roomId}`:'Підключено!');addChat('💡','Ліво=рух | Центр=погляд | Право=кнопки');updHP();gameLoop();}
-function gameLoop(){requestAnimationFrame(gameLoop);const now=performance.now(),dt=Math.min((now-lastT)/1000,0.1);lastT=now;if(!isDead){let mx=0,mz=0;if(joyOn){const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JDEAD){mx=jdX/JMAX;mz=-jdY/JMAX;}}if(keys['KeyW']||keys['ArrowUp'])mz=-1;if(keys['KeyS']||keys['ArrowDown'])mz=1;if(keys['KeyA']||keys['ArrowLeft'])mx=-1;if(keys['KeyD']||keys['ArrowRight'])mx=1;const moving=mx!==0||mz!==0;if(moving)legPh+=dt*8;const spd=charSpd();let nx=playerPos.x,nz=playerPos.z;if(moving){const len=Math.sqrt(mx*mx+mz*mz)||1;nx=playerPos.x+(Math.sin(yaw)*(-mz/len)+Math.cos(yaw)*(mx/len))*spd;nz=playerPos.z+(Math.cos(yaw)*(-mz/len)-Math.sin(yaw)*(mx/len))*spd;}if(!checkWall(nx,playerPos.z,playerPos.y))playerPos.x=nx;
-if(!checkWall(playerPos.x,nz,playerPos.y))playerPos.z=nz;
-// Map border clamp - stay inside terrain
-playerPos.x=Math.max(-98,Math.min(98,playerPos.x));
-playerPos.z=Math.max(-98,Math.min(98,playerPos.z));const gy=getH(playerPos.x,playerPos.z);const sy=getStairsH(playerPos.x,playerPos.z);const fy=getFloorH(playerPos.x,playerPos.z,playerPos.y);let effGnd=gy;if(sy!==null)effGnd=Math.max(effGnd,sy);if(fy!==null)effGnd=Math.max(effGnd,fy);playerVelY+=GRAVITY*dt;playerPos.y+=playerVelY*dt;const minY=effGnd+1.62;// feet touch ground (mesh feet at y-1.6)if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}else isOnGround=false;if(camMode===1){
-  // 3rd person - behind
-  const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z,cy=playerPos.y+CAM3P.y;
-  camera.position.set(cx,cy,cz);
-  camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));
-}else if(camMode===2){
-  // 3rd person - front face view: camera in front of player, looking back at face
-  const frontDist=3.2;
-  const cx=playerPos.x+Math.sin(yaw)*frontDist,cz=playerPos.z+Math.cos(yaw)*frontDist,cy=playerPos.y+1.4;
-  camera.position.set(cx,cy,cz);
-  camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));
-}else{
-  // 1st person
-  camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);
-  camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;
-}if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);
-// camMode 2 = front face: rotate mesh to face camera (toward viewer)
-myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;
-myMesh.visible=(camMode===1||camMode===2);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}updHunger(dt);updateSky(dt);if(!buildMode){castRay();updTgt(tTree);}else{updateGhost();tHPEl.style.display='none';}if(now-lastSync>100){lastSync=now;const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};if(isHost){const msg=JSON.stringify({type:'host_pos',...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}else if(hostConn){try{hostConn.send(JSON.stringify({type:'pos',...pd}));}catch(e){}}}}const ft=now*0.003;fireLights.forEach(fl=>{const f=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;fl.light.intensity=fl.base*f;if(fl.mesh){fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18;fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12;}if(fl.innerMesh)fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22;});for(const[pid,rp]of Object.entries(remPlayers)){rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);rp.mesh.rotation.y=rp.yaw+Math.PI;const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';}renderer.render(scene,camera);}
+function startGame(){
+  const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;
+  playerPos.set(Math.random()*10-5,5,Math.random()*10-5);
+  myMesh=mkChar(myChar);myMesh.visible=false;scene.add(myMesh);
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('game').style.display='block';
+  addChat('🏠',isHost?'Ти хост. ID: '+roomId:'Підключено!');
+  addChat('💡','Ліво=рух | Центр=погляд | Право=кнопок');
+  updHP();gameLoop();
+}
+
+function gameLoop(){
+  requestAnimationFrame(gameLoop);
+  const now=performance.now(),dt=Math.min((now-lastT)/1000,0.1);lastT=now;
+  if(!isDead){
+    let mx=0,mz=0;
+    if(joyOn){const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JDEAD){mx=jdX/JMAX;mz=-jdY/JMAX;}}
+    if(keys['KeyW']||keys['ArrowUp'])mz=-1;
+    if(keys['KeyS']||keys['ArrowDown'])mz=1;
+    if(keys['KeyA']||keys['ArrowLeft'])mx=-1;
+    if(keys['KeyD']||keys['ArrowRight'])mx=1;
+    const moving=mx!==0||mz!==0;
+    if(moving)legPh+=dt*8;
+    const spd=charSpd();
+    let nx=playerPos.x,nz=playerPos.z;
+    if(moving){
+      const len=Math.sqrt(mx*mx+mz*mz)||1;
+      nx=playerPos.x+(Math.sin(yaw)*(-mz/len)+Math.cos(yaw)*(mx/len))*spd;
+      nz=playerPos.z+(Math.cos(yaw)*(-mz/len)-Math.sin(yaw)*(mx/len))*spd;
+    }
+    if(!checkWall(nx,playerPos.z,playerPos.y))playerPos.x=nx;
+    if(!checkWall(playerPos.x,nz,playerPos.y))playerPos.z=nz;
+    playerPos.x=Math.max(-98,Math.min(98,playerPos.x));
+    playerPos.z=Math.max(-98,Math.min(98,playerPos.z));
+
+    const gy=getH(playerPos.x,playerPos.z);
+    const sy=getStairsH(playerPos.x,playerPos.z);
+    const fy=getFloorH(playerPos.x,playerPos.z,playerPos.y);
+    let effGnd=gy;
+    if(sy!==null)effGnd=Math.max(effGnd,sy);
+    if(fy!==null)effGnd=Math.max(effGnd,fy);
+    playerVelY+=GRAVITY*dt;
+    playerPos.y+=playerVelY*dt;
+    const minY=effGnd+1.62;
+    if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}
+    else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}
+    else isOnGround=false;
+
+    // Camera modes
+    if(camMode===1){
+      // 3rd person behind
+      const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z,cy=playerPos.y+CAM3P.y;
+      camera.position.set(cx,cy,cz);
+      camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));
+    }else if(camMode===2){
+      // 3rd person front face
+      const fd=3.2;
+      const cx=playerPos.x+Math.sin(yaw)*fd,cz=playerPos.z+Math.cos(yaw)*fd,cy=playerPos.y+1.4;
+      camera.position.set(cx,cy,cz);
+      camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));
+    }else{
+      // 1st person
+      camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);
+      camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;
+    }
+
+    if(myMesh){
+      myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);
+      myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;
+      myMesh.visible=(camMode===1||camMode===2);
+      if(moving){
+        const sw=Math.sin(legPh)*0.4;
+        myMesh.children.forEach(c=>{
+          if(c.name==='legL')c.rotation.x=sw;
+          else if(c.name==='legR')c.rotation.x=-sw;
+          else if(c.name==='armL')c.rotation.x=-sw*0.5;
+          else if(c.name==='armR')c.rotation.x=sw*0.5;
+        });
+      }
+    }
+    updHunger(dt);updateSky(dt);
+    if(!buildMode){castRay();updTgt(tTree);}else{updateGhost();tHPEl.style.display='none';}
+    if(now-lastSync>100){
+      lastSync=now;
+      const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};
+      if(isHost){
+        const msg=JSON.stringify({type:'host_pos',...pd});
+        Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});
+      }else if(hostConn){try{hostConn.send(JSON.stringify({type:'pos',...pd}));}catch(e){}}
+    }
+  }
+  const ft=now*0.003;
+  fireLights.forEach(fl=>{
+    const f=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;
+    fl.light.intensity=fl.base*f;
+    if(fl.mesh){fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18;fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12;}
+    if(fl.innerMesh)fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22;
+  });
+  for(const[pid,rp]of Object.entries(remPlayers)){
+    rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);
+    rp.mesh.rotation.y=rp.yaw+Math.PI;
+    const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);
+    p3.project(camera);
+    if(p3.z<1){
+      rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';
+      rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';
+      rp.lbl.style.display='block';
+    }else rp.lbl.style.display='none';
+  }
+  renderer.render(scene,camera);
+}
+
 document.getElementById('createBtn').addEventListener('click',createRoom);
 document.getElementById('refreshBtn').addEventListener('click',refreshRooms);
-document.getElementById('manualJoin').addEventListener('click',()=>{const id=document.getElementById('manualId').value.trim();if(id)joinRoom(id,'друг');});
+document.getElementById('manualJoin').addEventListener('click',()=>{
+  const id=document.getElementById('manualId').value.trim();if(id)joinRoom(id,'друг');
+});
 updHP();
-window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-window.addEventListener('beforeunload',()=>{if(isHost){clearInterval(announceInt);if(window._worldSaveInt)clearInterval(window._worldSaveInt);saveWorld(roomId);removeRoom(roomId);}broadcast({type:'bye'});});
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+});
+window.addEventListener('beforeunload',()=>{
+  if(isHost){clearInterval(announceInt);if(window._worldSaveInt)clearInterval(window._worldSaveInt);saveWorld(roomId);removeRoom(roomId);}
+  broadcast({type:'bye'});
+});
 </script>
 </body>
-  </html>
+</html>
