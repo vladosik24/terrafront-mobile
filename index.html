@@ -76,9 +76,9 @@ canvas{display:block;}
 .bs .bn{font-size:8px;color:#bbb;}
 .bs.sel .bn{color:#ffe082;}
 /* mini-map */
-#minimap{position:absolute;top:48px;right:8px;width:110px;border-radius:8px;border:2px solid #fff3;background:#000a;z-index:11;overflow:hidden;pointer-events:all;}
-#minimap canvas{width:110px;height:110px;display:block;}
-#mmClose{width:100%;background:#0008;border:none;color:#aaa;font-size:10px;cursor:pointer;padding:2px 0;line-height:1.4;}
+#minimap{position:absolute;top:48px;right:130px;width:114px;border-radius:50% 50% 8px 8px;border:2px solid #fff3;background:#000a;z-index:11;overflow:hidden;pointer-events:all;}
+#minimap canvas{width:110px;height:110px;display:block;border-radius:50%;}
+#mmClose{width:100%;background:#0009;border:none;color:#aaa;font-size:10px;cursor:pointer;padding:2px 0;line-height:1.4;border-radius:0 0 6px 6px;}
 #mmClose:hover{color:#fff;}
 #xh{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;pointer-events:none;z-index:8;}
 #xh::before,#xh::after{content:'';position:absolute;background:#ffffffbb;border-radius:2px;}
@@ -421,17 +421,23 @@ function toggleBuild(){buildMode=!buildMode;document.getElementById('buildTb').c
 function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.classList.toggle('sel',s.dataset.b===t));}
 const RAY=new THREE.Raycaster(),CTR=new THREE.Vector2(0,0);
 function snapG(v,g){return Math.round(v/g)*g;}
-// Returns the Y of the top surface of the nearest floor/platform/roof under point
+// Returns top surface Y of nearest floor/platform/roof near point
 function getNearbyFloorY(gx,gz){
   let best=null,bestDist=999;
   for(const b of placed){
     if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;
-    const dist=Math.sqrt((gx-b.x)**2+(gz-b.z)**2);
-    if(dist<6&&dist<bestDist){bestDist=dist;best=b.y+BDEFS[b.type].h/2;}// top surface
+    const def=BDEFS[b.type];
+    const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
+    const dx=gx-b.x,dz=gz-b.z;
+    const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
+    // only snap if within floor bounds (with margin)
+    if(Math.abs(lx)>def.w/2+1.5||Math.abs(lz)>def.d/2+1.5)continue;
+    const dist=Math.sqrt(dx*dx+dz*dz);
+    if(dist<bestDist){bestDist=dist;best=b.y+def.h/2;}
   }
   return best;
 }
-// Returns Y top of nearest stairs top
+// Returns Y top of nearest stairs
 function getNearbyStairsTopY(px,pz){
   let best=null,bestDist=999;
   for(const b of placed){
