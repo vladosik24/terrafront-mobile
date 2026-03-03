@@ -63,15 +63,16 @@ canvas{display:block;}
 #plCount{background:#0009;border:1px solid #fff2;border-radius:6px;padding:2px 8px;font-size:10px;color:#81c784;}
 #timeBlk{text-align:right;font-size:10px;color:#ffffffcc;text-shadow:0 1px 3px #000;line-height:1.4;}
 #exitBtn{pointer-events:all;background:#0009;border:1px solid #fff3;border-radius:6px;color:#ccc;font-size:10px;padding:3px 7px;cursor:pointer;white-space:nowrap;}
-/* Tools panel - vertical on right side */
-#tools{position:absolute;bottom:170px;right:8px;display:flex;flex-direction:column;gap:5px;z-index:15;pointer-events:all;}
+/* Tools panel - vertical on right side, above action buttons */
+#tools{position:absolute;bottom:100px;right:8px;display:flex;flex-direction:column;gap:5px;z-index:15;pointer-events:all;}
 .tb{width:34px;height:34px;border-radius:8px;background:#000a;border:2px solid #fff3;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .tb.on{border-color:#ffe082;background:#ffe08228;}
 #camTb.on{border-color:#4fc3f7;background:#4fc3f728;}
-/* Mini-map inside tools area */
-#minimap{position:absolute;bottom:110px;right:8px;width:110px;border-radius:8px;border:2px solid #fff3;background:#000a;z-index:11;overflow:hidden;pointer-events:all;}
-#minimap canvas{width:110px;height:110px;display:block;}
-#mmClose{width:100%;background:#0009;border:none;color:#aaa;font-size:9px;cursor:pointer;padding:2px 0;line-height:1.4;border-radius:0 0 6px 6px;}
+/* Mini-map - top right, circular, not overlapping tools */
+#minimap{position:absolute;top:50px;right:8px;width:112px;z-index:11;pointer-events:all;display:flex;flex-direction:column;align-items:center;gap:2px;}
+#mmCircle{width:108px;height:108px;border-radius:50%;border:2px solid #fff4;background:#000a;overflow:hidden;box-shadow:0 2px 12px #000a;}
+#mmCircle canvas{width:108px;height:108px;display:block;}
+#mmClose{background:#0009;border:1px solid #fff2;border-radius:6px;color:#aaa;font-size:9px;cursor:pointer;padding:2px 10px;line-height:1.6;white-space:nowrap;}
 #mmClose:hover{color:#fff;}
 #buildBar{position:absolute;bottom:0;left:0;right:150px;display:none;flex-direction:row;background:#000e;border-top:1px solid #fff2;overflow-x:auto;padding:3px 6px;gap:5px;scrollbar-width:none;z-index:12;align-items:center;}
 #buildBar::-webkit-scrollbar{display:none;}
@@ -169,8 +170,8 @@ canvas{display:block;}
     <div id="centerHud"><div id="plCount">👥 <span id="plNum">1</span>/6</div></div>
     <div style="display:flex;align-items:center;gap:6px;pointer-events:all;"><div id="timeBlk">🌤 <span id="timeLbl">День</span> <span id="timeCk">12:00</span></div><button id="exitBtn" onclick="exitToLobby()">← Лобі</button></div>
   </div>
-  <!-- Mini-map moved next to tools -->
-  <div id="minimap"><canvas id="mmCanvas" width="220" height="220"></canvas><button id="mmClose" onclick="toggleMinimap()">✕ карта</button></div>
+  <!-- Mini-map - top right, circular -->
+  <div id="minimap"><div id="mmCircle"><canvas id="mmCanvas" width="220" height="220"></canvas></div><button id="mmClose" onclick="toggleMinimap()">🗺️ карта</button></div>
   <div id="tools">
     <div id="buildTb" class="tb" onclick="toggleBuild()">🔨</div>
     <div id="camTb"   class="tb" onclick="toggleCam()">👁️</div>
@@ -300,10 +301,36 @@ function goLobby(){const nick=document.getElementById('nickInp').value.trim();if
 const BC=typeof BroadcastChannel!=='undefined'?new BroadcastChannel('tf_rooms_bc'):null;
 let _local={};
 const PANTRY='https://getpantry.cloud/apiv1/pantry/124c2222-9ff7-4e8c-a5e6-448ddc389d41/basket/rooms';
-async function fetchRooms(){try{const r=await fetch(PANTRY,{cache:'no-store'});if(r.ok)return await r.json()||{};}catch(e){}return _local;}
-async function announceRoom(rid,nick,count,offline=false){const now=Date.now();_local[rid]={nick,count,char:myChar,ts:now,offline};if(BC)BC.postMessage({type:'ru',rooms:_local});try{let rooms=await fetchRooms();rooms[rid]={nick,count,char:myChar,ts:now,offline};await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});}catch(e){}}
-async function removeRoom(rid){if(_local[rid])_local[rid].offline=true;try{let rooms=await fetchRooms();if(rooms[rid]){rooms[rid].offline=true;rooms[rid].ts=Date.now();await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});}}catch(e){}}
-if(BC)BC.onmessage=e=>{if(e.data.type==='ru')_local=e.data.rooms;};
+async function fetchRooms(){
+  try{
+    // Add timestamp to URL to bust any proxy/CDN cache
+    const r=await fetch(PANTRY+'?_='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache','Pragma':'no-cache'}});
+    if(r.ok){const data=await r.json();return {...data,..._local};}// merge: _local overrides stale server data
+  }catch(e){console.warn('Pantry fetch failed:',e);}
+  return _local;
+}
+async function announceRoom(rid,nick,count,offline=false){
+  const now=Date.now();
+  _local[rid]={nick,count,char:myChar,ts:now,offline};
+  if(BC)BC.postMessage({type:'ru',rooms:_local});
+  try{
+    // Fetch fresh, then PUT merged data
+    let rooms={};
+    try{const r=await fetch(PANTRY+'?_='+now,{cache:'no-store'});if(r.ok)rooms=await r.json()||{};}catch(e){}
+    rooms[rid]={nick,count,char:myChar,ts:now,offline};
+    await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});
+  }catch(e){console.warn('Pantry PUT failed:',e);}
+}
+async function removeRoom(rid){
+  if(_local[rid])_local[rid].offline=true;
+  try{
+    let rooms={};
+    try{const r=await fetch(PANTRY+'?_='+Date.now(),{cache:'no-store'});if(r.ok)rooms=await r.json()||{};}catch(e){}
+    if(rooms[rid]){rooms[rid].offline=true;rooms[rid].ts=Date.now();}
+    await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});
+  }catch(e){}
+}
+if(BC)BC.onmessage=e=>{if(e.data.type==='ru'){_local={..._local,...e.data.rooms};}};
 
 // ══ THREE SCENE ══
 const scene=new THREE.Scene();
@@ -441,23 +468,20 @@ function getNearbyFloorY(gx,gz){
   return best;
 }
 
-// Returns the base Y (bottom of existing floor slab) for placing a SAME-LEVEL floor adjacent.
-// When placing a new floor next to existing, we want them at the same height, not stacked.
+// Returns Y-center of nearest same-level floor tile for placing adjacent floor at same height.
+// Searches within exactly 1 grid step (def.w) in any direction.
 function getNearbyFloorBaseY(gx,gz){
+  const FLOOR_W=3; // floor grid size
   let best=null,bestDist=999;
   for(const b of placed){
-    if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='platform')continue;
-    const def=BDEFS[b.type];
-    const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
+    if(b.type!=='floor'&&b.type!=='floor_stone')continue;
     const dx=gx-b.x,dz=gz-b.z;
-    const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
-    // Check if the target grid cell is adjacent to this floor (within 1.5x grid size away)
-    const hW=def.w/2+def.w*0.8,hD=def.d/2+def.d*0.8;
-    if(Math.abs(lx)>hW||Math.abs(lz)>hD)continue;
     const dist=Math.sqrt(dx*dx+dz*dz);
-    if(dist<bestDist){bestDist=dist;best=b.y;}// b.y is center of floor = same Y for new floor
+    // Only snap if within 2 grid steps (adjacent or nearby)
+    if(dist>FLOOR_W*2.2)continue;
+    if(dist<bestDist){bestDist=dist;best=b.y;}
   }
-  return best;
+  return best; // b.y = center Y of existing floor = center Y for new floor at same level
 }
 
 function updateGhost(){
@@ -920,19 +944,32 @@ function handleMsg(pid,raw){
 function setupPeer(id,cb){if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}myPeer=new Peer(id);myPeer.on('open',rid=>{myId=rid;setStatus('✅ ID: '+rid);if(cb)cb(rid);});myPeer.on('connection',conn=>{conn.on('open',()=>{if(!isHost)return;if(Object.keys(clientConns).length>=5){conn.send(JSON.stringify({type:'full'}));conn.close();return;}clientConns[conn.peer]=conn;conn.on('data',data=>{handleMsg(conn.peer,typeof data==='object'?JSON.stringify(data):data);});conn.on('close',()=>{handleMsg(conn.peer,JSON.stringify({type:'bye'}));delete clientConns[conn.peer];updPC();});});});myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});myPeer.on('error',err=>{if(err.type==='unavailable-id')setupPeer('tf-'+Math.random().toString(36).slice(2,10),cb);else if(err.type==='peer-unavailable')setStatus('❌ Кімнату не знайдено.');else setStatus('❌ '+err.type);});}
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
 async function refreshRooms(){
-  setStatus("🔄 Оновлення...");const rooms=await fetchRooms();const now=Date.now();
-  const all=Object.entries(rooms).filter(([,r])=>now-(r.ts||0)<7*24*3600*1000);
+  setStatus("🔄 Оновлення...");
+  let rooms={};
+  try{rooms=await fetchRooms();}catch(e){rooms=_local;}
+  const now=Date.now();
+  // Show ALL rooms from past 30 days (not just 7)
+  const all=Object.entries(rooms).filter(([,r])=>r&&r.nick&&now-(r.ts||0)<30*24*3600*1000);
   const list=document.getElementById("roomList");
-  if(!all.length){list.innerHTML="<div style='padding:14px;text-align:center;color:#555'>Немає кімнат 🌲</div>";setStatus("");return;}
+  if(!all.length){
+    list.innerHTML="<div style='padding:14px;text-align:center;color:#555'>Немає кімнат 🌲<br><span style='font-size:10px'>Створи кімнату або введи ID вручну</span></div>";
+    setStatus("Кімнат не знайдено");return;
+  }
   list.innerHTML="";all.sort(([,a],[,b])=>(b.ts||0)-(a.ts||0));
   all.forEach(([id,r])=>{
     const d=document.createElement("div");d.className="room";
-    const ico=CICONS[r.char]||"🧑",online=!r.offline&&now-(r.ts||0)<90000;
-    const ago=Math.floor((now-(r.ts||0))/60000),agoStr=ago<60?ago+"хв":Math.floor(ago/60)+"год";
-    d.innerHTML="<div><b>"+ico+" "+r.nick+"'s World</b><br><span style='font-size:10px;color:"+(online?"#81c784":"#888")+"'>"+(online?"🟢 онлайн · 👥"+(r.count||1)+"/6":"💤 офлайн · "+agoStr+" тому")+"</span></div><button style='background:#1976d2;border:none;border-radius:6px;color:#fff;padding:4px 10px;font-size:11px;cursor:pointer'>"+(online?"Приєднатись":"Відкрити")+"</button>";
-    d.querySelector("button").addEventListener("click",()=>joinRoom(id,r.nick));list.appendChild(d);
+    const ico=CICONS[r.char]||"🧑";
+    const ageSec=(now-(r.ts||0))/1000;
+    // Online = announced within 2 minutes
+    const online=!r.offline&&ageSec<120;
+    const ago=Math.floor(ageSec/60),agoStr=ago<60?ago+"хв":Math.floor(ago/60)+"год";
+    const statusColor=online?"#81c784":ageSec<600?"#ffcc80":"#888";
+    const statusText=online?"🟢 онлайн · 👥"+(r.count||1)+"/6":ageSec<600?"🟡 нещодавно · "+agoStr+" тому":"💤 офлайн · "+agoStr+" тому";
+    d.innerHTML="<div style='flex:1'><b style='font-size:12px'>"+ico+" "+r.nick+"'s World</b><br><span style='font-size:10px;color:"+statusColor+"'>"+statusText+"</span><br><span style='font-size:9px;color:#555'>ID: "+id+"</span></div><button style='background:#1976d2;border:none;border-radius:6px;color:#fff;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap'>"+(online?"Увійти":"Відкрити")+"</button>";
+    d.querySelector("button").addEventListener("click",()=>joinRoom(id,r.nick));
+    list.appendChild(d);
   });
-  setStatus("Кімнат: "+all.length);
+  setStatus("Знайдено кімнат: "+all.length);
 }
 function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}document.getElementById('createBtn').disabled=false;}
 
@@ -1027,7 +1064,7 @@ function drawMinimap(){
 let minimapVisible=true;
 function toggleMinimap(){
   minimapVisible=!minimapVisible;
-  const cv=document.getElementById('mmCanvas');
+  const cv=document.getElementById('mmCircle');
   cv.style.display=minimapVisible?'block':'none';
   document.getElementById('mmClose').textContent=minimapVisible?'✕ карта':'🗺️ карта';
 }
