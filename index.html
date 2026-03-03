@@ -118,8 +118,7 @@ canvas{display:block;}
 #chatInp{flex:1;background:#0008;border:1px solid #fff3;border-radius:6px;color:#fff;padding:4px 6px;font-size:10px;outline:none;}
 #chatSnd{background:#1976d2;border:none;border-radius:6px;color:#fff;padding:4px 7px;font-size:10px;cursor:pointer;}
 .plbl{position:absolute;pointer-events:none;color:#fff;font-size:10px;font-weight:bold;text-shadow:0 1px 4px #000;transform:translate(-50%,-100%);background:#0008;padding:2px 5px;border-radius:4px;}
-#selfPan{position:absolute;top:48px;right:48px;width:85px;height:115px;border-radius:10px;overflow:hidden;border:2px solid #4fc3f7;display:none;z-index:16;box-shadow:0 3px 14px #0009;}
-#selfPan canvas{width:100%!important;height:100%!important;display:block;}
+
 </style>
 </head>
 <body>
@@ -192,7 +191,6 @@ canvas{display:block;}
   <div id="xh"></div>
   <div id="tgtHP"><span>Ціль</span><div id="tgtBar" style="width:100%"></div></div>
   <div id="float"></div>
-  <div id="selfPan"></div>
   <div id="joyZone"><div id="joyBase"><div id="joyNip"></div></div></div>
   <div id="lookZone"></div>
   <div id="actZone">
@@ -273,10 +271,7 @@ camera.position.set(0,5,20);
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.getElementById('game').appendChild(renderer.domElement);
-const selfRend=new THREE.WebGLRenderer({antialias:true,alpha:true});
-selfRend.setSize(85,115);selfRend.setPixelRatio(1);selfRend.setClearColor(0x0a1a0a,0.85);
-document.getElementById('selfPan').appendChild(selfRend.domElement);
-const selfCam=new THREE.PerspectiveCamera(60,85/115,0.1,20);
+
 const sun=new THREE.DirectionalLight(0xfff2cc,1.4);sun.position.set(60,120,40);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=sun.shadow.camera.bottom=-80;sun.shadow.camera.right=sun.shadow.camera.top=80;sun.shadow.camera.far=300;scene.add(sun);
 const ambient=new THREE.AmbientLight(0xc8e0ff,0.4);scene.add(ambient);
 const hemi=new THREE.HemisphereLight(0x87ceeb,0x3b7d3b,0.3);scene.add(hemi);
@@ -345,7 +340,55 @@ function toggleBuild(){buildMode=!buildMode;document.getElementById('buildTb').c
 function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.classList.toggle('sel',s.dataset.b===t));}
 function snapG(v,g){return Math.round(v/g)*g;}
 const RAY=new THREE.Raycaster(),CTR=new THREE.Vector2(0,0);
-function updateGhost(){const def=BDEFS[selBldType];if(!def)return;if(!ghostMesh||ghostMesh.userData.t!==selBldType){if(ghostMesh)scene.remove(ghostMesh);ghostMesh=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),new THREE.MeshStandardMaterial({color:0x4fc3f7,transparent:true,opacity:0.45,depthWrite:false}));ghostMesh.userData.t=selBldType;scene.add(ghostMesh);}const dist=2.5,px=camera.position.x-Math.sin(yaw)*dist,pz=camera.position.z-Math.cos(yaw)*dist;let gx=px,gz=pz;if(def.snap){gx=snapG(px,def.w);gz=snapG(pz,def.d);}const gy=getH(gx,gz);if(selBldType==='floor')ghostMesh.position.set(gx,gy+0.1,gz);else if(selBldType==='roof')ghostMesh.position.set(gx,gy+3.2,gz);else if(selBldType==='wall'){ghostMesh.position.set(gx,gy+def.h/2,gz);ghostMesh.rotation.y=Math.round(yaw/(Math.PI/2))*(Math.PI/2);}else if(selBldType==='stairs'){ghostMesh.position.set(px,gy+1,pz);ghostMesh.rotation.y=yaw;}else{ghostMesh.position.set(px,gy+def.h/2,pz);ghostMesh.rotation.y=Math.round(yaw/(Math.PI/2))*(Math.PI/2);}}
+function getNearbyFloorY(gx,gz){
+  // Find the highest floor/roof nearby to snap building on top of it
+  let best=null;
+  for(const b of placed){
+    if(b.type!=='floor'&&b.type!=='roof'&&b.type!=='wall')continue;
+    const dist=Math.sqrt((gx-b.x)**2+(gz-b.z)**2);
+    if(dist<4){
+      const topY=b.y+(BDEFS[b.type]?BDEFS[b.type].h/2:0);
+      if(best===null||topY>best)best=topY;
+    }
+  }
+  return best;
+}
+function updateGhost(){
+  const def=BDEFS[selBldType];if(!def)return;
+  if(!ghostMesh||ghostMesh.userData.t!==selBldType){
+    if(ghostMesh)scene.remove(ghostMesh);
+    ghostMesh=new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),new THREE.MeshStandardMaterial({color:0x4fc3f7,transparent:true,opacity:0.45,depthWrite:false}));
+    ghostMesh.userData.t=selBldType;scene.add(ghostMesh);
+  }
+  const dist=2.5,px=camera.position.x-Math.sin(yaw)*dist,pz=camera.position.z-Math.cos(yaw)*dist;
+  let gx=px,gz=pz;
+  if(def.snap){gx=snapG(px,def.w);gz=snapG(pz,def.d);}
+  const gy=getH(gx,gz);
+  const nearbyY=getNearbyFloorY(gx,gz);
+  // Base Y: use nearby building top if available, else terrain
+  const baseY=nearbyY!==null?nearbyY:gy;
+  const snappedRy=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
+
+  if(selBldType==='floor'){
+    ghostMesh.position.set(gx,baseY+0.1,gz);
+    ghostMesh.rotation.y=0;
+  }else if(selBldType==='roof'){
+    // Snap roof on top of walls
+    const wallTop=nearbyY!==null?nearbyY:gy+3;
+    ghostMesh.position.set(gx,wallTop+def.h/2,gz);
+    ghostMesh.rotation.y=0;
+  }else if(selBldType==='wall'){
+    ghostMesh.position.set(gx,baseY+def.h/2,gz);
+    ghostMesh.rotation.y=snappedRy;
+  }else if(selBldType==='stairs'){
+    ghostMesh.position.set(px,gy+1,pz);
+    ghostMesh.rotation.y=yaw;
+  }else{
+    // Other objects: sit on terrain
+    ghostMesh.position.set(px,gy+def.h/2,pz);
+    ghostMesh.rotation.y=snappedRy;
+  }
+}
 function nearestBld(md=6){let best=null,bd=md;RAY.setFromCamera(CTR,camera);for(let i=0;i<placed.length;i++){if(!placed[i].mesh.parent)continue;const h=RAY.intersectObject(placed[i].mesh,true);if(h.length&&h[0].distance<bd){bd=h[0].distance;best=i;}}return best;}
 function tryInteract(){const idx=nearestBld(3);if(idx===null)return false;const b=placed[idx],bp=b.mesh.position;if(Math.sqrt((playerPos.x-bp.x)**2+(playerPos.z-bp.z)**2)>3.5)return false;if(b.type==='bed'){playerHP=Math.min(maxHP,playerHP+30);hunger=Math.min(100,hunger+10);updHP();showFloat('🛏️ +30 HP');return true;}if(b.type==='campfire'){if(inv.meat>=1&&inv.coal>=1){inv.meat--;inv.coal--;playerHP=Math.min(maxHP,playerHP+40);hunger=Math.min(100,hunger+50);updHP();renderInv();showFloat('🥩 +40 HP');}else showFloat('❌ Потрібно м\'ясо + вугілля');return true;}if(b.type==='workbench'){showFloat('🔧 Верстак активовано');return true;}if(b.type==='anvil'){if(inv.metal>=2){inv.metal-=2;inv.sword++;showFloat('⚒️ Меч wykuty!');}else showFloat('❌ Потрібно метал×2');return true;}if(b.type==='well'){hunger=Math.min(100,hunger+20);playerHP=Math.min(maxHP,playerHP+10);showFloat('⛲ +10 HP');return true;}return false;}
 function placeBuilding(){if(!buildMode)return;if(selBldType==='__break'){const idx=nearestBld();if(idx===null){showFloat('❌ Наведи на споруду');return;}const b=placed[idx],def=BDEFS[b.type];if(def)Object.entries(def.cost).forEach(([k,v])=>inv[k]+=Math.floor(v*0.5));scene.remove(b.mesh);placed.splice(idx,1);broadcast({type:'build_remove',idx});showFloat('💥 Зламано!');renderInv();return;}if(selBldType==='__move'){if(!movingBld){const idx=nearestBld();if(idx===null){showFloat('❌ Наведи на споруду');return;}movingBld=idx;placed[idx].mesh.traverse(c=>{if(c.isMesh&&c.material&&c.material.emissive)c.material.emissive.setHex(0x4fc3f7);});showFloat('↔️ Постав на нове місце');}else{const b=placed[movingBld];b.mesh.traverse(c=>{if(c.isMesh&&c.material&&c.material.emissive)c.material.emissive.setHex(0x000000);});const nx=camera.position.x-Math.sin(yaw)*2.5,nz=camera.position.z-Math.cos(yaw)*2.5,ny=getH(nx,nz)+BDEFS[b.type].h/2;b.mesh.position.set(nx,ny,nz);b.x=nx;b.y=ny;b.z=nz;broadcast({type:'build_move',idx:movingBld,x:nx,y:ny,z:nz});movingBld=null;showFloat('✅ Переміщено!');}return;}if(!ghostMesh){tryInteract();return;}const def=BDEFS[selBldType];if(!def)return;if(!Object.entries(def.cost).every(([k,v])=>inv[k]>=v)){showFloat('❌ '+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>k+'×'+(v-inv[k])).join(', '));return;}Object.entries(def.cost).forEach(([k,v])=>inv[k]-=v);const bx=ghostMesh.position.x,by=ghostMesh.position.y,bz=ghostMesh.position.z,bry=ghostMesh.rotation.y;spawnBld(selBldType,bx,by,bz,bry);broadcast({type:'build',btype:selBldType,x:bx,y:by,z:bz,ry:bry});showFloat('🏗️ Збудовано!');renderInv();}
@@ -555,7 +598,23 @@ async function exitToLobby(){
 let camMode=0;
 const CAM3P=new THREE.Vector3(0,2.2,4.5);
 let myMesh=null;
-function toggleCam(){camMode=(camMode+1)%3;const btn=document.getElementById('camTb'),sp=document.getElementById('selfPan'),xh=document.getElementById('xh');if(camMode===0){btn.classList.remove('on');btn.textContent='👁️';sp.style.display='none';xh.style.display='';if(myMesh)myMesh.visible=false;showFloat('🎯 Вид 1-ї особи');}else if(camMode===1){btn.classList.add('on');btn.textContent='🔭';sp.style.display='none';xh.style.display='none';if(myMesh)myMesh.visible=true;showFloat('👁️ Вид 3-ї особи');}else{btn.classList.add('on');btn.textContent='🤳';sp.style.display='block';xh.style.display='';if(myMesh)myMesh.visible=false;showFloat('🤳 Self-cam');}}
+function toggleCam(){
+  camMode=(camMode+1)%3;
+  const btn=document.getElementById('camTb'),xh=document.getElementById('xh');
+  if(camMode===0){
+    btn.classList.remove('on');btn.textContent='👁️';xh.style.display='';
+    if(myMesh)myMesh.visible=false;
+    showFloat('🎯 Вид від 1-ї особи');
+  }else if(camMode===1){
+    btn.classList.add('on');btn.textContent='🔭';xh.style.display='none';
+    if(myMesh)myMesh.visible=true;
+    showFloat('👁️ Вид ззаду');
+  }else{
+    btn.classList.add('on');btn.textContent='🤳';xh.style.display='none';
+    if(myMesh)myMesh.visible=true;
+    showFloat('🤳 Вид спереду (обличчя)');
+  }
+}
 function getStairsH(px,pz){for(const b of placed){if(!b.isStairs)continue;const def=BDEFS[b.type];const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);const dx=px-b.x,dz=pz-b.z;const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;if(Math.abs(lx)<def.w/2+0.4&&Math.abs(lz)<def.d/2+0.4){const t=Math.max(0,Math.min(1,(lz+def.d/2)/def.d));return b.y-def.h/2+t*def.h;}}return null;}
 function getFloorH(px,pz,py){let best=null;for(const b of placed){if(b.type!=='floor'&&b.type!=='roof')continue;const def=BDEFS[b.type];const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);const dx=px-b.x,dz=pz-b.z;const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;if(Math.abs(lx)<def.w/2+0.1&&Math.abs(lz)<def.d/2+0.1){const topY=b.y+def.h/2;if(topY<py+0.5&&(best===null||topY>best))best=topY;}}return best;}
 const playerPos=new THREE.Vector3(0,5,0);
@@ -563,7 +622,22 @@ const PRAD=0.45;
 function checkWall(nx,nz,py){for(const b of placed){if(b.noCollide||b.isStairs)continue;const def=BDEFS[b.type];if(!def)continue;const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);const dx=nx-b.x,dz=nz-b.z;const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;const bTop=b.y+def.h/2,bBot=b.y-def.h/2;if(py<bBot-0.2||py>bTop+0.3)continue;if(Math.abs(lx)<def.w/2+PRAD&&Math.abs(lz)<def.d/2+PRAD)return true;}return false;}
 let lastT=performance.now(),lastSync=0,legPh=0;
 function startGame(){const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;playerPos.set(Math.random()*10-5,5,Math.random()*10-5);myMesh=mkChar(myChar);myMesh.visible=false;scene.add(myMesh);document.getElementById('lobby').style.display='none';document.getElementById('game').style.display='block';addChat('🏠',isHost?`Ти хост. ID: ${roomId}`:'Підключено!');addChat('💡','Ліво=рух | Центр=погляд | Право=кнопки');updHP();gameLoop();}
-function gameLoop(){requestAnimationFrame(gameLoop);const now=performance.now(),dt=Math.min((now-lastT)/1000,0.1);lastT=now;if(!isDead){let mx=0,mz=0;if(joyOn){const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JDEAD){mx=jdX/JMAX;mz=-jdY/JMAX;}}if(keys['KeyW']||keys['ArrowUp'])mz=-1;if(keys['KeyS']||keys['ArrowDown'])mz=1;if(keys['KeyA']||keys['ArrowLeft'])mx=-1;if(keys['KeyD']||keys['ArrowRight'])mx=1;const moving=mx!==0||mz!==0;if(moving)legPh+=dt*8;const spd=charSpd();let nx=playerPos.x,nz=playerPos.z;if(moving){const len=Math.sqrt(mx*mx+mz*mz)||1;nx=playerPos.x+(Math.sin(yaw)*(-mz/len)+Math.cos(yaw)*(mx/len))*spd;nz=playerPos.z+(Math.cos(yaw)*(-mz/len)-Math.sin(yaw)*(mx/len))*spd;}if(!checkWall(nx,playerPos.z,playerPos.y))playerPos.x=nx;if(!checkWall(playerPos.x,nz,playerPos.y))playerPos.z=nz;const gy=getH(playerPos.x,playerPos.z);const sy=getStairsH(playerPos.x,playerPos.z);const fy=getFloorH(playerPos.x,playerPos.z,playerPos.y);let effGnd=gy;if(sy!==null)effGnd=Math.max(effGnd,sy);if(fy!==null)effGnd=Math.max(effGnd,fy);playerVelY+=GRAVITY*dt;playerPos.y+=playerVelY*dt;const minY=effGnd+1.0;if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}else isOnGround=false;if(camMode===1){const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z,cy=playerPos.y+CAM3P.y;camera.position.set(cx,cy,cz);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));}else{camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}if(camMode===2&&myMesh){myMesh.visible=true;const fx=playerPos.x+Math.sin(yaw)*1.4,fz=playerPos.z+Math.cos(yaw)*1.4;selfCam.position.set(fx,playerPos.y+0.55,fz);selfCam.lookAt(playerPos.x,playerPos.y+0.5,playerPos.z);}if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);myMesh.rotation.y=yaw+Math.PI;if(camMode!==2)myMesh.visible=(camMode===1);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}updHunger(dt);updateSky(dt);if(!buildMode){castRay();updTgt(tTree);}else{updateGhost();tHPEl.style.display='none';}if(now-lastSync>100){lastSync=now;const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};if(isHost){const msg=JSON.stringify({type:'host_pos',...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}else if(hostConn){try{hostConn.send(JSON.stringify({type:'pos',...pd}));}catch(e){}}}}const ft=now*0.003;fireLights.forEach(fl=>{const f=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;fl.light.intensity=fl.base*f;if(fl.mesh){fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18;fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12;}if(fl.innerMesh)fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22;});for(const[pid,rp]of Object.entries(remPlayers)){rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);rp.mesh.rotation.y=rp.yaw+Math.PI;const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';}renderer.render(scene,camera);if(camMode===2&&myMesh)selfRend.render(scene,selfCam);}
+function gameLoop(){requestAnimationFrame(gameLoop);const now=performance.now(),dt=Math.min((now-lastT)/1000,0.1);lastT=now;if(!isDead){let mx=0,mz=0;if(joyOn){const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JDEAD){mx=jdX/JMAX;mz=-jdY/JMAX;}}if(keys['KeyW']||keys['ArrowUp'])mz=-1;if(keys['KeyS']||keys['ArrowDown'])mz=1;if(keys['KeyA']||keys['ArrowLeft'])mx=-1;if(keys['KeyD']||keys['ArrowRight'])mx=1;const moving=mx!==0||mz!==0;if(moving)legPh+=dt*8;const spd=charSpd();let nx=playerPos.x,nz=playerPos.z;if(moving){const len=Math.sqrt(mx*mx+mz*mz)||1;nx=playerPos.x+(Math.sin(yaw)*(-mz/len)+Math.cos(yaw)*(mx/len))*spd;nz=playerPos.z+(Math.cos(yaw)*(-mz/len)-Math.sin(yaw)*(mx/len))*spd;}if(!checkWall(nx,playerPos.z,playerPos.y))playerPos.x=nx;if(!checkWall(playerPos.x,nz,playerPos.y))playerPos.z=nz;const gy=getH(playerPos.x,playerPos.z);const sy=getStairsH(playerPos.x,playerPos.z);const fy=getFloorH(playerPos.x,playerPos.z,playerPos.y);let effGnd=gy;if(sy!==null)effGnd=Math.max(effGnd,sy);if(fy!==null)effGnd=Math.max(effGnd,fy);playerVelY+=GRAVITY*dt;playerPos.y+=playerVelY*dt;const minY=effGnd+1.62;// feet touch ground (mesh feet at y-1.6)if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}else isOnGround=false;if(camMode===1){
+  // 3rd person - behind
+  const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z,cy=playerPos.y+CAM3P.y;
+  camera.position.set(cx,cy,cz);
+  camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));
+}else if(camMode===2){
+  // 3rd person - front face view (camera in front, looking back at face)
+  const frontDist=3.5;
+  const cx=playerPos.x-Math.sin(yaw)*frontDist,cz=playerPos.z-Math.cos(yaw)*frontDist,cy=playerPos.y+1.8;
+  camera.position.set(cx,cy,cz);
+  camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));
+}else{
+  // 1st person
+  camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);
+  camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;
+}if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);myMesh.rotation.y=yaw+Math.PI;myMesh.visible=(camMode===1||camMode===2);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}updHunger(dt);updateSky(dt);if(!buildMode){castRay();updTgt(tTree);}else{updateGhost();tHPEl.style.display='none';}if(now-lastSync>100){lastSync=now;const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};if(isHost){const msg=JSON.stringify({type:'host_pos',...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}else if(hostConn){try{hostConn.send(JSON.stringify({type:'pos',...pd}));}catch(e){}}}}const ft=now*0.003;fireLights.forEach(fl=>{const f=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;fl.light.intensity=fl.base*f;if(fl.mesh){fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18;fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12;}if(fl.innerMesh)fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22;});for(const[pid,rp]of Object.entries(remPlayers)){rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);rp.mesh.rotation.y=rp.yaw+Math.PI;const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';}renderer.render(scene,camera);}
 document.getElementById('createBtn').addEventListener('click',createRoom);
 document.getElementById('refreshBtn').addEventListener('click',refreshRooms);
 document.getElementById('manualJoin').addEventListener('click',()=>{const id=document.getElementById('manualId').value.trim();if(id)joinRoom(id,'друг');});
