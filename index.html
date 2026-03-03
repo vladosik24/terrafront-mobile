@@ -25,7 +25,7 @@ canvas{display:block;}
 .charCard .av{font-size:32px;margin-bottom:4px;}
 .charCard .cn{font-size:11px;font-weight:bold;}
 .charCard .cd{font-size:9px;color:#aaa;margin-top:2px;}
-#lobby{position:absolute;inset:0;background:linear-gradient(150deg,#060d12,#0e1e10);display:none;flex-direction:row;align-items:flex-start;justify-content:center;padding:12px 20px;gap:18px;z-index:100;overflow-y:auto;}
+#lobby{position:absolute;inset:0;background:linear-gradient(150deg,#060d12,#0e1e10);display:none;flex-direction:row;align-items:flex-start;justify-content:center;padding:40px 20px 12px;gap:18px;z-index:100;overflow-y:auto;}
 .lbLeft,.lbRight{display:flex;flex-direction:column;gap:8px;padding-top:6px;}
 .lbLeft{min-width:200px;max-width:240px;}
 .lbRight{flex:1;max-width:280px;}
@@ -111,7 +111,7 @@ canvas{display:block;}
 #jumpBtn.on{transform:scale(.86);}
 #actBtn{width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e65100cc,#4e1c00cc);border:3px solid #ffffffaa;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;pointer-events:all;transition:transform .1s;}
 #actBtn:active{transform:scale(.86);}
-#chat{position:absolute;bottom:10px;left:8px;width:160px;z-index:7;pointer-events:all;}
+#chat{position:absolute;bottom:152px;left:8px;width:160px;z-index:7;pointer-events:all;}
 #chatLog{background:#0008;border-radius:7px;padding:4px 7px;max-height:55px;overflow-y:auto;margin-bottom:4px;font-size:9px;line-height:1.4;}
 #chatLog div{color:#ffffffcc;}
 #chatWrap{display:flex;gap:3px;}
@@ -674,7 +674,7 @@ function gameLoop(){
     if(fy!==null)effGnd=Math.max(effGnd,fy);
     playerVelY+=GRAVITY*dt;
     playerPos.y+=playerVelY*dt;
-    const minY=effGnd+1.62;
+    const minY=effGnd+2.1;
     if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}
     else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}
     else isOnGround=false;
