@@ -76,8 +76,10 @@ canvas{display:block;}
 .bs .bn{font-size:8px;color:#bbb;}
 .bs.sel .bn{color:#ffe082;}
 /* mini-map */
-#minimap{position:absolute;top:48px;right:8px;width:110px;height:110px;border-radius:8px;border:2px solid #fff3;background:#000a;z-index:11;overflow:hidden;pointer-events:none;}
-#minimap canvas{width:110px;height:110px;}
+#minimap{position:absolute;top:48px;right:8px;width:110px;border-radius:8px;border:2px solid #fff3;background:#000a;z-index:11;overflow:hidden;pointer-events:all;}
+#minimap canvas{width:110px;height:110px;display:block;}
+#mmClose{width:100%;background:#0008;border:none;color:#aaa;font-size:10px;cursor:pointer;padding:2px 0;line-height:1.4;}
+#mmClose:hover{color:#fff;}
 #xh{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;pointer-events:none;z-index:8;}
 #xh::before,#xh::after{content:'';position:absolute;background:#ffffffbb;border-radius:2px;}
 #xh::before{width:2px;height:100%;left:50%;top:0;transform:translateX(-50%);}
@@ -166,7 +168,7 @@ canvas{display:block;}
     <div id="centerHud"><div id="plCount">👥 <span id="plNum">1</span>/6</div></div>
     <div style="display:flex;align-items:center;gap:6px;pointer-events:all;"><div id="timeBlk">🌤 <span id="timeLbl">День</span> <span id="timeCk">12:00</span></div><button id="exitBtn" onclick="exitToLobby()">← Лобі</button></div>
   </div>
-  <div id="minimap"><canvas id="mmCanvas" width="220" height="220"></canvas></div>
+  <div id="minimap"><canvas id="mmCanvas" width="220" height="220"></canvas><button id="mmClose" onclick="toggleMinimap()">✕ карта</button></div>
   <div id="tools">
     <div id="buildTb" class="tb" onclick="toggleBuild()">🔨</div>
     <div id="camTb"   class="tb" onclick="toggleCam()">👁️</div>
@@ -419,7 +421,26 @@ function toggleBuild(){buildMode=!buildMode;document.getElementById('buildTb').c
 function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.classList.toggle('sel',s.dataset.b===t));}
 const RAY=new THREE.Raycaster(),CTR=new THREE.Vector2(0,0);
 function snapG(v,g){return Math.round(v/g)*g;}
-function getNearbyFloorY(gx,gz){let best=null,bestDist=999;for(const b of placed){if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;const dist=Math.sqrt((gx-b.x)**2+(gz-b.z)**2);if(dist<6&&dist<bestDist){bestDist=dist;best=b.y;}}return best;}
+// Returns the Y of the top surface of the nearest floor/platform/roof under point
+function getNearbyFloorY(gx,gz){
+  let best=null,bestDist=999;
+  for(const b of placed){
+    if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;
+    const dist=Math.sqrt((gx-b.x)**2+(gz-b.z)**2);
+    if(dist<6&&dist<bestDist){bestDist=dist;best=b.y+BDEFS[b.type].h/2;}// top surface
+  }
+  return best;
+}
+// Returns Y top of nearest stairs top
+function getNearbyStairsTopY(px,pz){
+  let best=null,bestDist=999;
+  for(const b of placed){
+    if(b.type!=='stairs')continue;
+    const dist=Math.sqrt((px-b.x)**2+(pz-b.z)**2);
+    if(dist<5&&dist<bestDist){bestDist=dist;best=b.y+BDEFS.stairs.h/2;}
+  }
+  return best;
+}
 function updateGhost(){
   const def=BDEFS[selBldType];if(!def)return;
   if(!ghostMesh||ghostMesh.userData.t!==selBldType){
@@ -562,11 +583,25 @@ function spawnBld(type,x,y,z,ry,extras={}){
     if(extras.pin){g.userData.pin=extras.pin;g.userData.locked=extras.locked||false;}
 
   }else if(type==='wall_window'){
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),matTex(TEX.wall)));
+    // Wall segments around window opening (no solid centre)
+    const wallMat2=matTex(TEX.wall);
     const openW=1.4,openH=1.1,openY=0.2;
+    const sideW=(def.w-openW)/2;
+    const botH=def.h/2+openY-openH/2;
+    const topWH=def.h/2-openY-openH/2;
+    // left slab
+    const wL=new THREE.Mesh(new THREE.BoxGeometry(sideW,def.h,def.d),wallMat2);wL.position.set(-def.w/2+sideW/2,0,0);g.add(wL);
+    // right slab
+    const wR=new THREE.Mesh(new THREE.BoxGeometry(sideW,def.h,def.d),wallMat2);wR.position.set(def.w/2-sideW/2,0,0);g.add(wR);
+    // bottom sill
+    if(botH>0.01){const wB=new THREE.Mesh(new THREE.BoxGeometry(openW,botH,def.d),wallMat2);wB.position.set(0,-def.h/2+botH/2,0);g.add(wB);}
+    // top strip
+    if(topWH>0.01){const wT=new THREE.Mesh(new THREE.BoxGeometry(openW,topWH,def.d),wallMat2);wT.position.set(0,def.h/2-topWH/2,0);g.add(wT);}
+    // window frame border
     const frameM2=new THREE.MeshStandardMaterial({color:0x4a2e0e,roughness:0.9});
     [openY+openH/2,openY-openH/2].forEach(fy=>{const fb=new THREE.Mesh(new THREE.BoxGeometry(openW+0.06,0.07,def.d+0.03),frameM2);fb.position.set(0,fy,0);g.add(fb);});
     [-openW/2,openW/2].forEach(fx=>{const fb=new THREE.Mesh(new THREE.BoxGeometry(0.07,openH+0.07,def.d+0.03),frameM2);fb.position.set(fx,openY,0);g.add(fb);});
+    // glass pivot
     const winPivot=new THREE.Group();winPivot.position.set(-openW/2,openY,0.0);
     const glassMat=new THREE.MeshStandardMaterial({color:0xaee8ff,transparent:true,opacity:0.22,roughness:0,side:THREE.DoubleSide,depthWrite:false});
     const glass=new THREE.Mesh(new THREE.BoxGeometry(openW-0.08,openH-0.08,0.03),glassMat);glass.position.set(openW/2,0,0);winPivot.add(glass);
@@ -956,7 +991,15 @@ function drawMinimap(){
   mmCtx.strokeStyle='rgba(255,255,255,0.15)';mmCtx.lineWidth=1;mmCtx.strokeRect(0,0,MM_SIZE,MM_SIZE);
 }
 
-let lastT=performance.now(),lastSync=0,legPh=0,mmTick=0;
+let minimapVisible=true;
+function toggleMinimap(){
+  minimapVisible=!minimapVisible;
+  const mm=document.getElementById('minimap');
+  const cv=document.getElementById('mmCanvas');
+  cv.style.display=minimapVisible?'block':'none';
+  document.getElementById('mmClose').textContent=minimapVisible?'✕ карта':'🗺️ карта';
+  mm.style.width=minimapVisible?'110px':'auto';
+}
 function startGame(){
   const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;
   playerPos.set(Math.random()*10-5,5,Math.random()*10-5);
@@ -990,7 +1033,27 @@ function gameLoop(){
     else{camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
     if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;myMesh.visible=(camMode===1||camMode===2);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}
     updHunger(dt);updateSky(dt);checkPickup();
-    if(!buildMode){castRay();updTgt(tTree);}else{if(selBldType!=='__move'||movingBld===-1)updateGhost();tHPEl.style.display='none';}
+    if(!buildMode){castRay();updTgt(tTree);}
+    else{
+      if(selBldType==='__move'&&movingBld!==-1){
+        // update ghost position while moving
+        if(ghostMesh){
+          const b=placed[movingBld];const def2=BDEFS[b.type];
+          const dist2=3,px2=camera.position.x-Math.sin(yaw)*dist2,pz2=camera.position.z-Math.cos(yaw)*dist2;
+          let gx2=px2,gz2=pz2;
+          if(def2&&def2.snap){gx2=snapG(px2,def2.w);gz2=snapG(pz2,def2.d);}
+          const flY=getNearbyFloorY(gx2,gz2);
+          const gy2=getH(gx2,gz2);
+          const baseY2=flY!==null?flY:gy2;
+          ghostMesh.position.set(gx2,baseY2+def2.h/2,gz2);
+          if(def2&&def2.snap)ghostMesh.rotation.y=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
+          else ghostMesh.rotation.y=yaw;
+        }
+      }else if(selBldType!=='__move'){
+        updateGhost();
+      }
+      tHPEl.style.display='none';
+    }
     if(now-lastSync>100){lastSync=now;const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};if(isHost){const msg=JSON.stringify({type:'host_pos',...pd});Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});}else if(hostConn)try{hostConn.send(JSON.stringify({type:'pos',...pd}));}catch(e){}}
     // minimap update every 3 frames
     mmTick++;if(mmTick%3===0)drawMinimap();
