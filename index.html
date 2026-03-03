@@ -84,7 +84,7 @@ canvas{display:block;}
 #tgtHP{position:absolute;top:50%;left:50%;transform:translate(-50%,26px);width:100px;background:#0008;border-radius:5px;padding:3px 8px;color:#fff;font-size:10px;text-align:center;pointer-events:none;display:none;z-index:8;}
 #tgtBar{height:5px;background:#4caf50;border-radius:3px;margin-top:2px;transition:width .15s;}
 #float{position:absolute;top:38%;left:50%;transform:translateX(-50%);color:#ffe082;font-size:15px;font-weight:bold;text-shadow:0 2px 8px #000;pointer-events:none;opacity:0;white-space:nowrap;z-index:8;}
-#invPanel{position:absolute;bottom:0;left:0;right:0;background:#111e;border-top:1px solid #fff2;border-radius:12px 12px 0 0;padding:10px;display:none;max-height:52vh;overflow-y:auto;z-index:20;}
+#invPanel{position:absolute;bottom:0;left:0;right:160px;background:#111e;border-top:1px solid #fff2;border-radius:12px 0 0 0;padding:10px;display:none;max-height:55vh;overflow-y:auto;z-index:20;}
 #invPanel h3{color:#ffe082;margin-bottom:6px;font-size:12px;}
 #invGrid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
 .slot{width:48px;height:48px;background:#ffffff10;border:1px solid #fff3;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
@@ -103,7 +103,7 @@ canvas{display:block;}
 #death p{color:#aaa;font-size:13px;margin-bottom:18px;}
 #respBtn{background:#c62828;border:none;border-radius:10px;color:#fff;padding:11px 30px;font-size:15px;cursor:pointer;}
 #joyZone{position:absolute;left:0;top:42px;bottom:0;width:44%;z-index:6;touch-action:none;}
-#joyBase{position:absolute;bottom:170px;left:22px;width:110px;height:110px;border-radius:50%;background:#ffffff07;border:2px solid #ffffff18;pointer-events:none;}
+#joyBase{position:absolute;bottom:22px;left:22px;width:110px;height:110px;border-radius:50%;background:#ffffff07;border:2px solid #ffffff18;pointer-events:none;}
 #joyNip{position:absolute;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#4fc3f7cc,#0d47a1cc);border:2px solid #ffffffaa;transform:translate(-50%,-50%);left:50%;top:50%;pointer-events:none;transition:opacity .1s;}
 #lookZone{position:absolute;left:44%;top:42px;right:52px;bottom:0;z-index:5;touch-action:none;}
 #actZone{position:absolute;right:0;top:42px;bottom:0;width:44%;z-index:6;touch-action:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;padding:16px 14px;gap:10px;pointer-events:none;}
@@ -456,8 +456,8 @@ const JDEAD=12,JMAX=52;
 function updNip(){joyNip.style.left=(50+Math.max(-1,Math.min(1,jdX/JMAX))*38)+'%';joyNip.style.top=(50+Math.max(-1,Math.min(1,jdY/JMAX))*38)+'%';joyNip.style.opacity=joyOn?'1':'0.5';}
 joyZone.addEventListener('touchstart',e=>{e.preventDefault();if(joyOn)return;const t=e.changedTouches[0];joyOn=true;joyId=t.identifier;jsX=t.clientX;jsY=t.clientY;jdX=0;jdY=0;const r=joyZone.getBoundingClientRect();joyBase.style.left=(t.clientX-r.left-55)+'px';joyBase.style.top=(t.clientY-r.top-55)+'px';joyBase.style.bottom='auto';updNip();},{passive:false});
 joyZone.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier!==joyId)continue;jdX=t.clientX-jsX;jdY=t.clientY-jsY;const m=Math.sqrt(jdX*jdX+jdY*jdY);if(m>JMAX){jdX=jdX/m*JMAX;jdY=jdY/m*JMAX;}updNip();}},{passive:false});
-joyZone.addEventListener('touchend',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===joyId){joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='170px';updNip();}}},{passive:false});
-joyZone.addEventListener('touchcancel',e=>{joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='170px';updNip();},{passive:false});
+joyZone.addEventListener('touchend',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===joyId){joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='22px';updNip();}}},{passive:false});
+joyZone.addEventListener('touchcancel',e=>{joyOn=false;jdX=0;jdY=0;joyBase.style.left='22px';joyBase.style.top='auto';joyBase.style.bottom='22px';updNip();},{passive:false});
 const lookZone=document.getElementById('lookZone');
 lookZone.style.pointerEvents='all';
 let lookId=-1,lTX=0,lTY=0;
