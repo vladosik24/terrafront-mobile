@@ -239,9 +239,32 @@ function goLobby(){const nick=document.getElementById('nickInp').value.trim();if
 const BC=typeof BroadcastChannel!=='undefined'?new BroadcastChannel('tf_rooms_bc'):null;
 let _local={};
 const PANTRY='https://getpantry.cloud/apiv1/pantry/124c2222-9ff7-4e8c-a5e6-448ddc389d41/basket/rooms';
+const WORLDS_BASE='https://getpantry.cloud/apiv1/pantry/124c2222-9ff7-4e8c-a5e6-448ddc389d41/basket/world_';
+
+// ══ WORLD PERSISTENCE ══
+async function saveWorld(rid){
+  if(!placed.length)return;
+  try{
+    const data={buildings:placed.map(b=>({t:b.type,x:b.x,y:b.y,z:b.z,r:b.ry})),ts:Date.now(),nick:myNick};
+    await fetch(WORLDS_BASE+rid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    console.log('World saved',placed.length,'buildings');
+  }catch(e){console.warn('Save world failed',e);}
+}
+async function loadWorld(rid){
+  try{
+    const r=await fetch(WORLDS_BASE+rid,{cache:'no-store'});
+    if(!r.ok)return null;
+    const data=await r.json();
+    if(data&&data.buildings&&data.buildings.length){return data;}
+  }catch(e){}
+  return null;
+}
+async function deleteWorld(rid){
+  try{await fetch(WORLDS_BASE+rid,{method:'DELETE'});}catch(e){}
+}
 async function fetchRooms(){try{const r=await fetch(PANTRY,{cache:'no-store'});if(r.ok)return await r.json()||{};}catch(e){}return _local;}
-async function announceRoom(rid,nick,count){const now=Date.now();_local[rid]={nick,count,char:myChar,ts:now};if(BC)BC.postMessage({type:'ru',rooms:_local});try{let rooms=await fetchRooms();Object.keys(rooms).forEach(k=>{if(now-(rooms[k].ts||0)>60000)delete rooms[k];});rooms[rid]={nick,count,char:myChar,ts:now};await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});}catch(e){}}
-async function removeRoom(rid){delete _local[rid];try{let rooms=await fetchRooms();delete rooms[rid];await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});}catch(e){}}
+async function announceRoom(rid,nick,count,offline=false){const now=Date.now();_local[rid]={nick,count,char:myChar,ts:now,offline};if(BC)BC.postMessage({type:'ru',rooms:_local});try{let rooms=await fetchRooms();rooms[rid]={nick,count,char:myChar,ts:now,offline};await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});}catch(e){}}
+async function removeRoom(rid){if(_local[rid])_local[rid].offline=true;try{let rooms=await fetchRooms();if(rooms[rid]){rooms[rid].offline=true;rooms[rid].ts=Date.now();await fetch(PANTRY,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rooms)});}}catch(e){}}
 if(BC)BC.onmessage=e=>{if(e.data.type==='ru')_local=e.data.rooms;};
 const scene=new THREE.Scene();
 scene.fog=new THREE.FogExp2(0x87a8c4,0.018);
@@ -402,45 +425,133 @@ function broadcast(data){const s=JSON.stringify(data);if(isHost)Object.values(cl
 function handleMsg(pid,raw){let d;try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch(e){return;}switch(d.type){case 'hello':addRP(pid,d.nick,d.char);if(isHost){const w=JSON.stringify({type:'welcome',hostId:myId,hostNick:myNick,hostChar:myChar,players:Object.entries(remPlayers).filter(([id])=>id!==pid).map(([id,p])=>({id,nick:p.nick,char:p.ct}))});try{clientConns[pid].send(w);}catch(e){}Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(JSON.stringify({type:'hello_fwd',nick:d.nick,char:d.char,pid}));}catch(e){}});if(placed.length){try{clientConns[pid].send(JSON.stringify({type:'buildings_sync',buildings:placed.map(b=>({btype:b.type,x:b.x,y:b.y,z:b.z,ry:b.ry}))}));}catch(e){}}}break;case 'hello_fwd':addRP(d.pid,d.nick,d.char);break;case 'welcome':if(d.hostId&&d.hostId!==myId)addRP(d.hostId,d.hostNick,d.hostChar);d.players.forEach(p=>addRP(p.id,p.nick,p.char));break;case 'pos':if(remPlayers[pid]){remPlayers[pid].x=d.x;remPlayers[pid].y=d.y;remPlayers[pid].z=d.z;remPlayers[pid].yaw=d.yaw||0;}if(isHost){const f=JSON.stringify({type:'pos_fwd',pid,x:d.x,y:d.y,z:d.z,yaw:d.yaw||0});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;case 'pos_fwd':if(remPlayers[d.pid]){remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;}break;case 'host_pos':if(remPlayers[d.pid]){remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;}break;case 'chat':addChat(d.nick,d.msg);if(isHost){const f=JSON.stringify(d);Object.values(clientConns).forEach(c=>{try{c.send(f);}catch(e){}});}break;case 'pvp_hit':if(d.target===myId){takeDmg(d.dmg);addChat('⚔️',d.from+' атакував!');}if(isHost){const f=JSON.stringify(d);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;case 'tree_fell':if(trees[d.id]){trees[d.id].alive=false;trees[d.id].group.rotation.z=d.dir*Math.PI/2;setTimeout(()=>{trees[d.id].group.rotation.z=0;trees[d.id].hp=trees[d.id].maxHp;trees[d.id].alive=true;},10000);}if(isHost){const f=JSON.stringify(d);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;case 'build':spawnBld(d.btype,d.x,d.y,d.z,d.ry);if(isHost){const f=JSON.stringify(d);Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;case 'build_remove':if(placed[d.idx]){scene.remove(placed[d.idx].mesh);placed.splice(d.idx,1);}break;case 'build_move':if(placed[d.idx]){const b=placed[d.idx];b.mesh.position.set(d.x,d.y,d.z);b.x=d.x;b.y=d.y;b.z=d.z;}break;case 'buildings_sync':d.buildings.forEach(b=>spawnBld(b.btype,b.x,b.y,b.z,b.ry));break;case 'bye':remRP(pid);if(isHost){const f=JSON.stringify({type:'bye_fwd',pid});Object.entries(clientConns).forEach(([id,c])=>{if(id!==pid)try{c.send(f);}catch(e){}});}break;case 'bye_fwd':remRP(d.pid);break;case 'full':setStatus('❌ Кімната заповнена!');break;}}
 function setupPeer(id,cb){if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}myPeer=new Peer(id);myPeer.on('open',rid=>{myId=rid;setStatus('✅ ID: '+rid);if(cb)cb(rid);});myPeer.on('connection',conn=>{conn.on('open',()=>{if(!isHost)return;if(Object.keys(clientConns).length>=5){conn.send(JSON.stringify({type:'full'}));conn.close();return;}clientConns[conn.peer]=conn;conn.on('data',data=>{const raw=typeof data==='object'?JSON.stringify(data):data;handleMsg(conn.peer,raw);});conn.on('close',()=>{handleMsg(conn.peer,JSON.stringify({type:'bye'}));delete clientConns[conn.peer];updPC();});});});myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});myPeer.on('error',err=>{if(err.type==='unavailable-id')setupPeer('tf-'+Math.random().toString(36).slice(2,10),cb);else if(err.type==='peer-unavailable')setStatus('❌ Кімнату не знайдено.');else setStatus('❌ '+err.type);});}
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
-async function refreshRooms(){setStatus('🔄 Оновлення...');const rooms=await fetchRooms();const now=Date.now();const active=Object.entries(rooms).filter(([,r])=>now-(r.ts||0)<300000);const list=document.getElementById('roomList');if(!active.length){list.innerHTML='<div style="padding:14px;text-align:center;color:#555">Немає кімнат 🌲</div>';setStatus('');}else{list.innerHTML='';active.forEach(([id,r])=>{const d=document.createElement('div');d.className='room';const ico=CICONS[r.char]||'🧑';d.innerHTML=`<div>${ico} <b>${r.nick}</b>'s World</div><div style="font-size:11px;color:#81c784">👥 ${r.count||1}/6</div>`;d.addEventListener('click',()=>joinRoom(id,r.nick));list.appendChild(d);});setStatus(`Знайдено: ${active.length}`);}}
+async function refreshRooms(){setStatus('🔄 Оновлення...');const rooms=await fetchRooms();const now=Date.now();
+// Show rooms active in last 7 days
+const all=Object.entries(rooms).filter(([,r])=>now-(r.ts||0)<7*24*3600*1000);
+const list=document.getElementById('roomList');
+if(!all.length){list.innerHTML='<div style="padding:14px;text-align:center;color:#555">Немає кімнат 🌲</div>';setStatus('');return;}
+list.innerHTML='';
+all.sort(([,a],[,b])=>(b.ts||0)-(a.ts||0));
+all.forEach(([id,r])=>{
+  const d=document.createElement('div');d.className='room';
+  const ico=CICONS[r.char]||'🧑';
+  const online=!r.offline&&now-(r.ts||0)<90000;
+  const ago=Math.floor((now-(r.ts||0))/60000);
+  const agoStr=ago<60?ago+'хв':Math.floor(ago/60)+'год';
+  const statusHtml=online
+    ?`<span style="color:#81c784;font-size:10px">🟢 онлайн · 👥${r.count||1}/6</span>`
+    :`<span style="color:#888;font-size:10px">💤 офлайн · ${agoStr} тому</span>`;
+  d.innerHTML=`<div><b>${ico} ${r.nick}'s World</b><br>${statusHtml}</div><button style="background:#1976d2;border:none;border-radius:6px;color:#fff;padding:4px 10px;font-size:11px;cursor:pointer">${online?'Приєднатись':'Відкрити'}</button>`;
+  d.querySelector('button').addEventListener('click',()=>joinRoom(id,r.nick));
+  list.appendChild(d);
+});
+setStatus(`Кімнат: ${all.length}`);}
 function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}document.getElementById('createBtn').disabled=false;}
-function createRoom(){resetNet();roomId='tf-'+Math.random().toString(36).slice(2,9);isHost=true;setStatus('⏳ Створюємо...');document.getElementById('createBtn').disabled=true;setupPeer(roomId,()=>{setStatus('✅ Кімната: '+roomId);saveRoom(roomId,myNick);announceRoom(roomId,myNick,1);announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length),15000);startGame();});}
-function joinRoom(id,hostNick){
+function createRoom(){
+  resetNet();
+  roomId='tf-'+Math.random().toString(36).slice(2,9);
+  isHost=true;
+  setStatus('⏳ Створюємо...');
+  document.getElementById('createBtn').disabled=true;
+  setupPeer(roomId,async ()=>{
+    setStatus('✅ Кімната: '+roomId);
+    saveRoom(roomId,myNick);
+    announceRoom(roomId,myNick,1,false);
+    announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false),15000);
+    // Auto-save world every 30s
+    if(window._worldSaveInt)clearInterval(window._worldSaveInt);
+    window._worldSaveInt=setInterval(()=>{if(isHost)saveWorld(roomId);},30000);
+    startGame();
+  });
+}
+async function joinRoom(id,hostNick){
   resetNet();
   id=id.trim().toLowerCase();
-  // If this was our own hosted room - recreate it instead of joining
-  if(id===roomId||id.startsWith('tf-')){
-    // Try to join, if peer-unavailable it means room is dead
-  }
-  roomId=id;isHost=false;
+  roomId=id;
   setStatus('🔗 Підключаємось...');
   document.getElementById('createBtn').disabled=true;
   saveRoom(id,hostNick||'Хост');
+
+  // First try to connect as client
   const clientId='tf-'+Math.random().toString(36).slice(2,12);
   setupPeer(clientId,()=>{
     hostConn=myPeer.connect(id,{reliable:true,serialization:'json'});
     let conn=false;
     hostConn.on('open',()=>{
       conn=true;
+      isHost=false;
       setStatus('✅ Підключено!');
       hostConn.send(JSON.stringify({type:'hello',nick:myNick,char:myChar}));
       startGame();
     });
     hostConn.on('data',data=>{const raw=typeof data==='object'?JSON.stringify(data):data;handleMsg(id,raw);});
     hostConn.on('close',()=>addChat('🔌','Хост відключився'));
-    hostConn.on('error',e=>{
-      setStatus('❌ Кімната недоступна. Можливо хост вийшов.');
-      document.getElementById('createBtn').disabled=false;
+    hostConn.on('error',async e=>{
+      // Host offline - become new host, load saved world
+      setStatus('💤 Хост офлайн. Відновлюємо світ...');
+      if(myPeer){try{myPeer.destroy();}catch(e){} myPeer=null;}
+      isHost=true;
+      setupPeer(id,async()=>{
+        setStatus('✅ Ти новий хост! Завантажуємо світ...');
+        saveRoom(id,myNick);
+        announceRoom(id,myNick,1,false);
+        announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false),15000);
+        if(window._worldSaveInt)clearInterval(window._worldSaveInt);
+        window._worldSaveInt=setInterval(()=>{if(isHost)saveWorld(id);},30000);
+        startGame();
+        // Load saved buildings
+        const world=await loadWorld(id);
+        if(world&&world.buildings){
+          world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r));
+          showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
+        }
+      });
     });
-    setTimeout(()=>{
+    // Timeout - if no response, become host
+    setTimeout(async()=>{
       if(!conn){
-        setStatus('❌ Кімната не відповідає. Можливо хост вийшов.');
-        document.getElementById('createBtn').disabled=false;
+        setStatus('💤 Хост офлайн. Відновлюємо...');
+        if(myPeer){try{myPeer.destroy();}catch(e){} myPeer=null;}
+        isHost=true;
+        setupPeer(id,async()=>{
+          setStatus('✅ Ти новий хост!');
+          saveRoom(id,myNick);
+          announceRoom(id,myNick,1,false);
+          announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false),15000);
+          if(window._worldSaveInt)clearInterval(window._worldSaveInt);
+          window._worldSaveInt=setInterval(()=>{if(isHost)saveWorld(id);},30000);
+          startGame();
+          const world=await loadWorld(id);
+          if(world&&world.buildings){
+            world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r));
+            showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
+          }
+        });
       }
-    },8000);
+    },6000);
   });
 }
-function exitToLobby(){broadcast({type:'bye'});if(isHost){clearInterval(announceInt);removeRoom(roomId);}resetNet();document.getElementById('game').style.display='none';document.getElementById('lobby').style.display='flex';if(myMesh){scene.remove(myMesh);myMesh=null;}buildMode=false;document.getElementById('buildBar').classList.remove('on');if(ghostMesh){scene.remove(ghostMesh);ghostMesh=null;}renderSaved();refreshRooms();}
+async function exitToLobby(){
+  broadcast({type:'bye'});
+  if(isHost){
+    clearInterval(announceInt);
+    if(window._worldSaveInt)clearInterval(window._worldSaveInt);
+    await saveWorld(roomId);      // save buildings to cloud
+    removeRoom(roomId);           // mark room as offline (not delete)
+  }
+  resetNet();
+  document.getElementById('game').style.display='none';
+  document.getElementById('lobby').style.display='flex';
+  if(myMesh){scene.remove(myMesh);myMesh=null;}
+  // Clear placed buildings from scene
+  placed.forEach(b=>{scene.remove(b.mesh);});
+  placed.length=0;
+  buildMode=false;
+  document.getElementById('buildBar').classList.remove('on');
+  if(ghostMesh){scene.remove(ghostMesh);ghostMesh=null;}
+  renderSaved();
+  refreshRooms();
+}
 let camMode=0;
 const CAM3P=new THREE.Vector3(0,2.2,4.5);
 let myMesh=null;
@@ -458,7 +569,7 @@ document.getElementById('refreshBtn').addEventListener('click',refreshRooms);
 document.getElementById('manualJoin').addEventListener('click',()=>{const id=document.getElementById('manualId').value.trim();if(id)joinRoom(id,'друг');});
 updHP();
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-window.addEventListener('beforeunload',()=>{if(isHost){clearInterval(announceInt);removeRoom(roomId);}broadcast({type:'bye'});});
+window.addEventListener('beforeunload',()=>{if(isHost){clearInterval(announceInt);if(window._worldSaveInt)clearInterval(window._worldSaveInt);saveWorld(roomId);removeRoom(roomId);}broadcast({type:'bye'});});
 </script>
 </body>
 </html>
