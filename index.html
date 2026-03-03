@@ -753,10 +753,28 @@ function gameLoop(){
       }
     }
     updHunger(dt);updateSky(dt);
-    if(!buildMode){castRay();updTgt(tTree);}else{if(selBldType!=='__move'||!movingBld)updateGhost();else if(ghostMesh){// move ghost with camera for __move
-const dist=2.5,px=camera.position.x-Math.sin(yaw)*dist,pz=camera.position.z-Math.cos(yaw)*dist;
-const gy2=getH(px,pz);const def2=BDEFS[placed[movingBld]?placed[movingBld].type:null];const h2=def2?def2.h:1;
-ghostMesh.position.set(px,gy2+h2/2,pz);}tHPEl.style.display='none';}
+    if(!buildMode){castRay();updTgt(tTree);}else{if(selBldType!=='__move'||!movingBld)updateGhost();else if(ghostMesh){
+  // move ghost with snap - same logic as updateGhost
+  const dist=2.5,px=camera.position.x-Math.sin(yaw)*dist,pz=camera.position.z-Math.cos(yaw)*dist;
+  const btype=placed[movingBld]?placed[movingBld].type:null;
+  const def2=BDEFS[btype];const h2=def2?def2.h:1;
+  const gy2=getH(px,pz);
+  const nearbyY2=getNearbyFloorY(px,pz);
+  let posY2;
+  if(btype==='floor'){
+    posY2=nearbyY2!==null?nearbyY2:gy2+h2/2;
+  }else if(btype==='wall'){
+    const wallBase=nearbyY2!==null?nearbyY2+BDEFS['floor'].h/2:gy2;
+    posY2=wallBase+h2/2;
+  }else{
+    posY2=nearbyY2!==null?nearbyY2+h2/2:gy2+h2/2;
+  }
+  // snap grid for floor/wall/roof
+  let gx2=px,gz2=pz;
+  if(def2&&def2.snap){gx2=Math.round(px/def2.w)*def2.w;gz2=Math.round(pz/def2.d)*def2.d;}
+  ghostMesh.position.set(gx2,posY2,gz2);
+  if(def2&&def2.snap)ghostMesh.rotation.y=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
+}tHPEl.style.display='none';}
     if(now-lastSync>100){
       lastSync=now;
       const pd={x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,pid:myId};
