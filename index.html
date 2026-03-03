@@ -544,8 +544,8 @@ function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.
 const RAY=new THREE.Raycaster(),CTR=new THREE.Vector2(0,0);
 function snapG(v,g){return Math.round(v/g)*g;}
 
-// Returns the top-surface Y of a floor/platform/roof slab that overlaps the given grid point.
-// Used to snap new floors ONTO existing floors (stack upward) or place walls on top of floors.
+// Returns the top-surface Y of a floor/platform/roof slab near the given grid point.
+// Used to snap walls/objects onto floors. Search radius is wide enough to catch floor edges.
 function getNearbyFloorY(gx,gz){
   let best=null,bestDist=999;
   for(const b of placed){
@@ -554,7 +554,8 @@ function getNearbyFloorY(gx,gz){
     const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
     const dx=gx-b.x,dz=gz-b.z;
     const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
-    if(Math.abs(lx)>def.w/2+1.5||Math.abs(lz)>def.d/2+1.5)continue;
+    // Extend search by full wall thickness (0.2) + 0.5 margin beyond floor edge
+    if(Math.abs(lx)>def.w/2+0.7||Math.abs(lz)>def.d/2+0.7)continue;
     const dist=Math.sqrt(dx*dx+dz*dz);
     if(dist<bestDist){bestDist=dist;best=b.y+def.h/2;}
   }
@@ -601,9 +602,34 @@ function updateGhost(){
     ghostMesh.position.set(gx,(nearbyY!==null?nearbyY+3:gy+3)+def.h/2,gz);
     ghostMesh.rotation.y=0;
   }else if(selBldType==='wall'||selBldType==='wall_stone'||selBldType==='wall_wood'||selBldType==='wall_metal'||selBldType==='wall_door'||selBldType==='wall_window'){
-    const nearbyY=getNearbyFloorY(gx,gz);
-    const wb=nearbyY!==null?nearbyY:gy;
-    ghostMesh.position.set(gx,wb+def.h/2,gz);
+    // Find nearest floor and snap wall to its edge
+    let bestFloor=null,bestDist=999;
+    for(const b of placed){
+      if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='platform')continue;
+      const dx=gx-b.x,dz=gz-b.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      if(dist<bestDist){bestDist=dist;bestFloor=b;}
+    }
+    let wx=gx,wz=gz,wallY=gy;
+    if(bestFloor){
+      const fd=BDEFS[bestFloor.type];
+      const cos=Math.cos(-bestFloor.ry),sin=Math.sin(-bestFloor.ry);
+      const dx=gx-bestFloor.x,dz=gz-bestFloor.z;
+      const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
+      // Snap to nearest edge of floor if within range
+      const halfW=fd.w/2,halfD=fd.d/2;
+      if(Math.abs(lx)<=halfW+1.5&&Math.abs(lz)<=halfD+1.5){
+        wallY=bestFloor.y+fd.h/2;
+        // Clamp to edge
+        const clampX=Math.max(-halfW,Math.min(halfW,lx));
+        const clampZ=Math.max(-halfD,Math.min(halfD,lz));
+        // Convert back to world coords
+        const wcos=Math.cos(bestFloor.ry),wsin=Math.sin(bestFloor.ry);
+        wx=bestFloor.x+wcos*clampX-wsin*clampZ;
+        wz=bestFloor.z+wsin*clampX+wcos*clampZ;
+      }
+    }
+    ghostMesh.position.set(wx,wallY+def.h/2,wz);
     ghostMesh.rotation.y=snappedRy;
   }else if(selBldType==='platform'){
     const nearbyY=getNearbyFloorY(gx,gz);
@@ -737,7 +763,10 @@ function wallMat(type){
 }
 
 function spawnBld(type,x,y,z,ry,extras={}){
-  const def=BDEFS[type];const g=new THREE.Group();
+  const def=BDEFS[type];
+  // Guard: skip unknown building types to prevent errors on map load
+  if(!def){console.warn('spawnBld: unknown type',type);return -1;}
+  const g=new THREE.Group();
   g.position.set(x,y,z);g.rotation.y=ry;
   const wm=wallMat(type);
 
