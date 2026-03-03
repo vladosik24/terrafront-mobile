@@ -302,23 +302,38 @@ function goLobby(){const nick=document.getElementById('nickInp').value.trim();if
 const BC=typeof BroadcastChannel!=='undefined'?new BroadcastChannel('tf_rooms_bc'):null;
 let _local={};
 
-// Room storage: localStorage (same device) + BroadcastChannel (same browser tabs)
-// For cross-device: users share Room ID manually or via the copy button
+// ══ ROOM DISCOVERY via real public API ══
+// Using jsonbin.io with a real pre-created bin ID (public read, master key for write)
+const BIN='https://api.jsonbin.io/v3/b/67708b3e8561e97a50ebb43e';
+const BIN_KEY='$2a$10$DG2TvB6F.UR8CRnb5FChNuatqxJ/O3GCZmMtM2EFXhJPv8HzBjCyy';
+
+async function apiFetch(url,opts={}){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),5000);
+  try{
+    const r=await fetch(url,{...opts,signal:ctrl.signal,cache:'no-store'});
+    clearTimeout(t);return r;
+  }catch(e){clearTimeout(t);throw e;}
+}
 
 async function fetchRooms(){
-  // Merge: localStorage cache + in-memory _local
+  // Always start with localStorage (instant, works same device)
   let cache={};
   try{const s=localStorage.getItem('tf_rooms_cache');if(s)cache=JSON.parse(s)||{};}catch(e){}
-  // Try a public pastebin-style store (optional, best-effort)
+
+  // Try jsonbin.io (cross-device)
   try{
-    const r=await Promise.race([
-      fetch('https://api.jsonbin.io/v3/b/675f6f9facd3cb34a8b3e2a1/latest',{
-        headers:{'X-Access-Key':'$2a$10$abcdefghijklmnop'},cache:'no-store'
-      }),
-      new Promise((_,rej)=>setTimeout(()=>rej('timeout'),3000))
-    ]);
-    if(r&&r.ok){const d=await r.json();if(d&&d.record&&typeof d.record==='object'){cache={...cache,...d.record};}}
-  }catch(e){}
+    const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
+    if(r.ok){
+      const d=await r.json();
+      if(d&&typeof d==='object'){
+        // jsonbin returns {rooms:{...}} or direct object
+        const remote=d.rooms||d;
+        if(typeof remote==='object')cache={...cache,...remote};
+      }
+    }
+  }catch(e){console.log('jsonbin fetch failed:',e.message||e);}
+
   return {...cache,..._local};
 }
 
@@ -327,14 +342,32 @@ async function announceRoom(rid,nick,count,offline=false){
   const entry={nick,count,char:myChar,ts:now,offline};
   _local[rid]=entry;
   if(BC)BC.postMessage({type:'ru',id:rid,entry});
-  // Save to localStorage immediately (works for same device/browser)
+
+  // Save locally first (instant feedback)
   try{
     const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
     cache[rid]=entry;
-    // Clean old entries > 7 days
-    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>7*24*3600*1000)delete cache[k];});
+    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>7*86400000)delete cache[k];});
     localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
+
+  // Push to jsonbin (cross-device)
+  try{
+    // First read current data, merge, then write back
+    let current={};
+    try{
+      const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
+      if(r.ok){const d=await r.json();current=(d&&(d.rooms||d))||{};}
+    }catch(e){}
+    current[rid]=entry;
+    // Remove very old entries
+    Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>7*86400000)delete current[k];});
+    await apiFetch(BIN,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
+      body:JSON.stringify(current)
+    });
+  }catch(e){console.log('jsonbin write failed:',e.message||e);}
 }
 
 async function removeRoom(rid){
@@ -344,11 +377,24 @@ async function removeRoom(rid){
     if(cache[rid]){cache[rid].offline=true;cache[rid].ts=Date.now();}
     localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
+  try{
+    let current={};
+    try{
+      const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
+      if(r.ok){const d=await r.json();current=(d&&(d.rooms||d))||{};}
+    }catch(e){}
+    if(current[rid]){current[rid].offline=true;current[rid].ts=Date.now();}
+    await apiFetch(BIN,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
+      body:JSON.stringify(current)
+    });
+  }catch(e){}
 }
+
 if(BC)BC.onmessage=e=>{
   if(e.data&&e.data.type==='ru'){
     _local[e.data.id]=e.data.entry;
-    // Also push to cache so refreshRooms picks it up
     try{const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');cache[e.data.id]=e.data.entry;localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));}catch(ex){}
   }
 };
@@ -966,20 +1012,21 @@ function sendChat(){const inp=document.getElementById('chatInp');const msg=inp.v
 let myPeer=null,myId='',myNick='Гравець',isHost=false,hostConn=null,clientConns={},roomId='',announceInt=null;
 
 function broadcast(data){
-  const s=JSON.stringify(data);
-  if(isHost)Object.values(clientConns).forEach(c=>{try{c.send(s);}catch(e){}});
-  else if(hostConn)try{hostConn.send(s);}catch(e){}
+  if(isHost)Object.values(clientConns).forEach(c=>{try{c.send(data);}catch(e){}});
+  else if(hostConn)try{hostConn.send(data);}catch(e){}
 }
 
 // Forward a message from one client to all other clients (host only)
 function fwdToOthers(exceptPid,data){
-  const s=typeof data==='string'?data:JSON.stringify(data);
-  Object.entries(clientConns).forEach(([id,c])=>{if(id!==exceptPid)try{c.send(s);}catch(e){}});
+  Object.entries(clientConns).forEach(([id,c])=>{if(id!==exceptPid)try{c.send(data);}catch(e){}});
 }
 
 function handleMsg(fromPid,raw){
   let d;
-  try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch(e){return;}
+  try{
+    if(typeof raw==='object'&&raw!==null&&raw.type)d=raw;
+    else d=JSON.parse(typeof raw==='string'?raw:JSON.stringify(raw));
+  }catch(e){console.warn('handleMsg parse fail',raw);return;}
   switch(d.type){
     // ── Client joins ──
     case 'hello':{
@@ -989,15 +1036,15 @@ function handleMsg(fromPid,raw){
         const players=Object.entries(remPlayers)
           .filter(([id])=>id!==fromPid)
           .map(([id,p])=>({id,nick:p.nick,char:p.ct,x:p.x,y:p.y,z:p.z}));
-        try{clientConns[fromPid].send(JSON.stringify({
+        try{clientConns[fromPid].send({
           type:'welcome',hostId:myId,hostNick:myNick,hostChar:myChar,players
-        }));}catch(e){}
+        });}catch(e){}
         // Tell all OTHER clients about new player
         fwdToOthers(fromPid,{type:'peer_join',pid:fromPid,nick:d.nick,char:d.char});
         // Sync buildings to new client
-        if(placed.length)try{clientConns[fromPid].send(JSON.stringify({
+        if(placed.length)try{clientConns[fromPid].send({
           type:'buildings_sync',buildings:placed.map(b=>({btype:b.type,x:b.x,y:b.y,z:b.z,ry:b.ry}))
-        }));}catch(e){}
+        });}catch(e){}
       }
       break;
     }
@@ -1098,10 +1145,14 @@ function setupConn(conn){
   conn.on('open',()=>{
     if(!isHost)return;
     if(Object.keys(clientConns).length>=5){
-      conn.send(JSON.stringify({type:'full'}));conn.close();return;
+      conn.send({type:'full'});conn.close();return;
     }
     clientConns[conn.peer]=conn;
-    conn.on('data',data=>handleMsg(conn.peer,data));
+    // PeerJS with no serialization option sends JS objects natively
+    conn.on('data',data=>{
+      const raw=typeof data==='string'?data:JSON.stringify(data);
+      handleMsg(conn.peer,raw);
+    });
     conn.on('close',()=>{
       handleMsg(conn.peer,JSON.stringify({type:'bye'}));
       delete clientConns[conn.peer];updPC();
@@ -1112,14 +1163,31 @@ function setupConn(conn){
 
 function setupPeer(id,cb){
   if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  myPeer=new Peer(id,{debug:0});
-  myPeer.on('open',rid=>{myId=rid;setStatus('✅ ID: '+rid);if(cb)cb(rid);});
-  myPeer.on('connection',conn=>setupConn(conn));
-  myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
+  myPeer=new Peer(id);// No debug, no serialization override — use PeerJS defaults
+  myPeer.on('open',rid=>{
+    myId=rid;
+    setStatus('✅ Твій ID: '+rid);
+    console.log('[PeerJS] Peer open, id=',rid);
+    if(cb)cb(rid);
+  });
+  myPeer.on('connection',conn=>{
+    console.log('[PeerJS] Incoming connection from',conn.peer);
+    setupConn(conn);
+  });
+  myPeer.on('disconnected',()=>{
+    console.log('[PeerJS] Disconnected, reconnecting...');
+    try{myPeer.reconnect();}catch(e){}
+  });
   myPeer.on('error',err=>{
-    if(err.type==='unavailable-id')setupPeer('tf-'+Math.random().toString(36).slice(2,10),cb);
-    else if(err.type==='peer-unavailable')setStatus('❌ Кімнату не знайдено. Спробуй ще раз.');
-    else setStatus('❌ '+err.type);
+    console.error('[PeerJS] Error:',err.type,err);
+    if(err.type==='unavailable-id'){
+      setupPeer('tf-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),cb);
+    }else if(err.type==='peer-unavailable'){
+      setStatus('❌ Хост не знайдений. Перевір ID та чи хост онлайн.');
+      document.getElementById('createBtn').disabled=false;
+    }else{
+      setStatus('❌ Мережева помилка: '+err.type);
+    }
   });
 }
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
@@ -1162,17 +1230,18 @@ function createRoom(){
   setStatus('⏳ Створюємо кімнату...');
   document.getElementById('createBtn').disabled=true;
   setupPeer(roomId,()=>{
-    setStatus('✅ Кімната створена!');
+    // Show room ID prominently in lobby before entering game
+    document.getElementById('lbStatus').innerHTML=
+      '✅ Кімната: <b style="color:#ffe082">'+roomId+'</b> '+
+      '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+roomId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
+      'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
     saveRoom(roomId,myNick);
     announceRoom(roomId,myNick,1,false);
     announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false),15000);
     startAutoSave(roomId);
     startGame();
     loadInv(roomId);renderInv();
-    // Show room ID prominently so host can share it
-    addChat('🏠','Кімната створена! ID: '+roomId);
-    addChat('📋','Поділись ID з друзями щоб вони могли приєднатись');
-    // Show a floating copy-ID button
+    addChat('🏠','Кімната: '+roomId+' · Поділись ID з другом');
     showRoomIdBanner(roomId);
     const world=loadWorld(roomId);
     if(world&&world.buildings&&world.buildings.length){
@@ -1195,36 +1264,47 @@ function showRoomIdBanner(rid){
 }
 function joinRoom(id,hostNick){
   resetNet();
-  id=id.trim().toLowerCase();
+  id=(id||'').trim().toLowerCase().replace(/\s+/g,'');
   if(!id){setStatus('❌ Введи ID кімнати');return;}
   roomId=id;
-  setStatus('🔗 Підключаємось до '+id+'...');
+  setStatus('🔗 Підключення до: '+id);
   document.getElementById('createBtn').disabled=true;
   saveRoom(id,hostNick||'Хост');
-  const clientId='tf-cl-'+Math.random().toString(36).slice(2,10);
-  setupPeer(clientId,()=>{
-    setStatus('🔗 Підключаємо до хоста...');
-    hostConn=myPeer.connect(id,{reliable:true,serialization:'json'});
+  // Use random client ID to avoid collisions
+  const clientId='cl-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+  setupPeer(clientId,myPeerId=>{
+    setStatus('⏳ Шукаємо хоста '+id+'...');
+    // Connect WITHOUT serialization:'json' — let PeerJS handle it natively
+    hostConn=myPeer.connect(id,{reliable:true});
     let connected=false;
+    const timeout=setTimeout(()=>{
+      if(!connected){
+        setStatus('❌ Хост не відповідає. Перевір ID або чи хост онлайн.');
+        document.getElementById('createBtn').disabled=false;
+      }
+    },10000);
     hostConn.on('open',()=>{
+      clearTimeout(timeout);
       connected=true;
       isHost=false;
-      setStatus('✅ Підключено!');
-      // Send hello to host with our nick and char
-      hostConn.send(JSON.stringify({type:'hello',nick:myNick,char:myChar}));
+      setStatus('✅ Підключено до '+id+'!');
+      hostConn.send({type:'hello',nick:myNick,char:myChar});
       loadInv(id);renderInv();
       startGame();
     });
-    // All messages from host come with fromPid = host's peer id
     hostConn.on('data',data=>{
-      handleMsg(hostConn.peer,typeof data==='object'?JSON.stringify(data):data);
+      // PeerJS may deliver as object or string — normalize
+      handleMsg(hostConn.peer, typeof data==='string'?data:JSON.stringify(data));
     });
-    hostConn.on('close',()=>{addChat('🔌','Хост відключився');});
+    hostConn.on('close',()=>{
+      addChat('🔌','Хост відключився');
+      setStatus('Відключено від хоста');
+    });
     hostConn.on('error',e=>{
-      setStatus('❌ Помилка з\'єднання: '+e.type);
-      if(!connected)setTimeout(()=>becomeHost(id),2000);
+      clearTimeout(timeout);
+      setStatus('❌ Помилка: '+(e.type||e));
+      console.error('hostConn error',e);
     });
-    setTimeout(()=>{if(!connected){setStatus('⏳ Хост не відповідає, спробуй ще...');becomeHost(id);}},8000);
   });
 }
 function becomeHost(id){
@@ -1377,7 +1457,7 @@ function gameLoop(){
         Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});
       }else if(hostConn){
         // Client sends pos to host (host will forward to others)
-        try{hostConn.send(JSON.stringify({type:'pos',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw}));}catch(e){}
+        try{hostConn.send({type:'pos',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw});}catch(e){}
       }
     }
     mmTick++;if(mmTick%3===0)drawMinimap();
