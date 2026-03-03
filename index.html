@@ -1000,6 +1000,7 @@ function toggleMinimap(){
   document.getElementById('mmClose').textContent=minimapVisible?'✕ карта':'🗺️ карта';
   mm.style.width=minimapVisible?'110px':'auto';
 }
+let lastT=performance.now(),lastSync=0,legPh=0,mmTick=0;
 function startGame(){
   const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;
   playerPos.set(Math.random()*10-5,5,Math.random()*10-5);
