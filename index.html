@@ -481,35 +481,38 @@ function spawnBld(type,x,y,z,ry){
     g.add(new THREE.Mesh(new THREE.BoxGeometry(def.w,def.h,def.d),matTex(TEX.roof)));
 
   }else if(type==='wall_door'){
-    // ── DOOR WALL ──
-    // Wall segments around the door opening (left, right, top, no black fill)
+    // ── DOOR WALL: segments around opening, NO fill mesh ──
     const wallMat=matTex(TEX.wall);
-    const segW=(def.w-1.0)/2; // side segment width
-    // left segment
-    const wL=new THREE.Mesh(new THREE.BoxGeometry(segW,def.h,def.d),wallMat);
-    wL.position.set(-def.w/2+segW/2,0,0);g.add(wL);
-    // right segment
-    const wR=new THREE.Mesh(new THREE.BoxGeometry(segW,def.h,def.d),wallMat);
-    wR.position.set(def.w/2-segW/2,0,0);g.add(wR);
-    // top segment above door
-    const topH=def.h-2.4;
-    if(topH>0){
-      const wT=new THREE.Mesh(new THREE.BoxGeometry(1.0,topH,def.d),wallMat);
-      wT.position.set(0,def.h/2-topH/2,0);g.add(wT);
-    }
-    // door frame
+    const openW=1.05, openH=2.4;
+    const sideW=(def.w-openW)/2;
+    const topH=def.h-openH;
+    // left slab
+    const wL=new THREE.Mesh(new THREE.BoxGeometry(sideW,def.h,def.d),wallMat);
+    wL.position.set(-def.w/2+sideW/2,0,0);g.add(wL);
+    // right slab
+    const wR=new THREE.Mesh(new THREE.BoxGeometry(sideW,def.h,def.d),wallMat);
+    wR.position.set(def.w/2-sideW/2,0,0);g.add(wR);
+    // top slab
+    const wT=new THREE.Mesh(new THREE.BoxGeometry(openW,topH,def.d),wallMat);
+    wT.position.set(0,def.h/2-topH/2,0);g.add(wT);
+    // thin door frame strips (just visual border, no fill)
     const frameM=new THREE.MeshStandardMaterial({color:0x3e2010,roughness:0.9});
-    const frameW=new THREE.Mesh(new THREE.BoxGeometry(1.05,2.4,def.d+0.02),frameM);
-    frameW.position.set(0,-def.h/2+1.2,0);g.add(frameW);
-    // door panel pivot (rotates to open)
+    // frame left/right jambs
+    [-(openW/2-0.04), openW/2-0.04].forEach(fx=>{
+      const j=new THREE.Mesh(new THREE.BoxGeometry(0.07,openH,def.d+0.02),frameM);
+      j.position.set(fx,-def.h/2+openH/2,0);g.add(j);
+    });
+    // frame top lintel
+    const lintel=new THREE.Mesh(new THREE.BoxGeometry(openW,0.07,def.d+0.02),frameM);
+    lintel.position.set(0,-def.h/2+openH,0);g.add(lintel);
+    // door panel pivot
     const doorPivot=new THREE.Group();
-    doorPivot.position.set(-0.5,-def.h/2+1.2,0.0);
-    const panel=new THREE.Mesh(new THREE.BoxGeometry(0.96,2.35,0.07),matTex(TEX.door));
-    panel.position.set(0.48,0,0);
+    doorPivot.position.set(-openW/2+0.04,-def.h/2+openH/2,0.0);
+    const panel=new THREE.Mesh(new THREE.BoxGeometry(openW-0.1,openH-0.08,0.07),matTex(TEX.door));
+    panel.position.set((openW-0.1)/2,0,0);
     doorPivot.add(panel);
-    // door handle
     const handle=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,8),new THREE.MeshStandardMaterial({color:0xd4a017,metalness:0.9,roughness:0.2}));
-    handle.position.set(0.88,0,0.05);doorPivot.add(handle);
+    handle.position.set(openW-0.22,0,0.06);doorPivot.add(handle);
     g.add(doorPivot);
     g.userData.doorPivot=doorPivot;
     g.userData.doorOpen=false;
