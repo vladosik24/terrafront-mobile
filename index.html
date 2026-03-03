@@ -1037,7 +1037,7 @@ function handleMsg(fromPid,raw){
           .filter(([id])=>id!==fromPid)
           .map(([id,p])=>({id,nick:p.nick,char:p.ct,x:p.x,y:p.y,z:p.z}));
         try{clientConns[fromPid].send({
-          type:'welcome',hostId:myId,hostNick:myNick,hostChar:myChar,players
+          type:'welcome',hostId:myId,hostNick:myNick,hostChar:myChar,players,gt:gameTime
         });}catch(e){}
         // Tell all OTHER clients about new player
         fwdToOthers(fromPid,{type:'peer_join',pid:fromPid,nick:d.nick,char:d.char});
@@ -1050,10 +1050,10 @@ function handleMsg(fromPid,raw){
     }
     // ── Host sends welcome to new client ──
     case 'welcome':{
-      // Add host as remote player
       if(d.hostId&&d.hostId!==myId)addRP(d.hostId,d.hostNick,d.hostChar);
-      // Add all other existing players
       d.players.forEach(p=>{addRP(p.id,p.nick,p.char);});
+      // Sync game time from host
+      if(typeof d.gt==='number')gameTime=d.gt;
       break;
     }
     // ── Another client joined (forwarded by host) ──
@@ -1077,11 +1077,13 @@ function handleMsg(fromPid,raw){
       }
       break;
     }
-    // ── Host broadcasts its own position to all clients ──
-    case 'host_pos':{
+    // ── Host broadcasts its own position + game time to all clients ──
+    case 'host_pos':
+    case 'host_sync':{
       if(remPlayers[d.pid]){
         remPlayers[d.pid].x=d.x;remPlayers[d.pid].y=d.y;remPlayers[d.pid].z=d.z;remPlayers[d.pid].yaw=d.yaw||0;
       }
+      if(typeof d.gt==='number')gameTime=d.gt;
       break;
     }
     case 'chat':{
@@ -1212,10 +1214,12 @@ function setupPeer(id,cb){
     if(err.type==='unavailable-id'){
       setupPeer('tf-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),cb);
     }else if(err.type==='peer-unavailable'){
-      setStatus('❌ Хост не знайдений. Перевір ID та чи хост онлайн.');
+      setStatus('❌ Кімната не знайдена або хост офлайн.');
       document.getElementById('createBtn').disabled=false;
+      if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
     }else{
       setStatus('❌ Мережева помилка: '+err.type);
+      document.getElementById('createBtn').disabled=false;
     }
   });
 }
@@ -1508,13 +1512,11 @@ function gameLoop(){
     }
     if(now-lastSync>100){
       lastSync=now;
-      const pd={type:'pos_fwd',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw};
       if(isHost){
-        // Host broadcasts its own position to all clients using pos_fwd (same format)
-        const msg=JSON.stringify(pd);
-        Object.values(clientConns).forEach(c=>{try{c.send(msg);}catch(e){}});
+        // Host sends its position + current gameTime to all clients
+        const pd={type:'host_sync',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw,gt:gameTime};
+        Object.values(clientConns).forEach(c=>{try{c.send(pd);}catch(e){}});
       }else if(hostConn){
-        // Client sends pos to host (host will forward to others)
         try{hostConn.send({type:'pos',pid:myId,x:playerPos.x,y:playerPos.y,z:playerPos.z,yaw});}catch(e){}
       }
     }
