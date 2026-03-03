@@ -1137,6 +1137,35 @@ function handleMsg(fromPid,raw){
       remRP(d.pid);
       break;
     }
+    // ── Host is passing control to this client ──
+    case 'become_host':{
+      addChat('👑','Хост передав тобі кімнату');
+      // Restore buildings from host's save
+      placed.forEach(b=>scene.remove(b.mesh));placed.length=0;
+      if(d.buildings&&d.buildings.length){
+        d.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
+      }
+      // Save locally so becomeHost can load it
+      saveWorld(d.roomId);
+      // Small delay to let host finish disconnect
+      setTimeout(()=>becomeHost(d.roomId),500);
+      break;
+    }
+    // ── Someone else is becoming the new host ──
+    case 'new_host_incoming':{
+      addChat('👑','Новий хост: '+d.newHostId);
+      // Close our connection to old host — we'll reconnect to new host
+      if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
+      const oldRoomId=roomId;
+      // Wait for new host to set up, then reconnect
+      setTimeout(()=>{
+        if(!isHost){
+          addChat('🔗','Підключаємось до нового хоста...');
+          joinRoom(oldRoomId,myNick);
+        }
+      },2000);
+      break;
+    }
     case 'full':{setStatus('❌ Кімната заповнена!');break;}
   }
 }
@@ -1297,8 +1326,12 @@ function joinRoom(id,hostNick){
       handleMsg(hostConn.peer, typeof data==='string'?data:JSON.stringify(data));
     });
     hostConn.on('close',()=>{
-      addChat('🔌','Хост відключився');
-      setStatus('Відключено від хоста');
+      addChat('🔌','Хост відключився — беремо управління...');
+      setStatus('👑 Хост пішов, стаєш хостом...');
+      const savedRoomId=roomId;
+      setTimeout(()=>{
+        if(!isHost)becomeHost(savedRoomId);
+      },1000);
     });
     hostConn.on('error',e=>{
       clearTimeout(timeout);
@@ -1308,16 +1341,41 @@ function joinRoom(id,hostNick){
   });
 }
 function becomeHost(id){
-  setStatus('💤 Хост офлайн. Відновлюємо...');if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}isHost=true;
+  // Called when original host disconnects — take over the room
+  if(isHost)return; // already host
+  setStatus('👑 Стаєш хостом...');
+  const hadBuildings=[...placed]; // remember current buildings
+  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+  isHost=true;
+  // Take over the original room ID so others can still connect
   setupPeer(id,()=>{
-    setStatus('✅ Ти новий хост!');saveRoom(id,myNick);announceRoom(id,myNick,1,false);
+    setStatus('👑 Ти новий хост! ID: '+id);
+    saveRoom(id,myNick);
+    announceRoom(id,myNick,1+Object.keys(clientConns).length,false);
     announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false),15000);
-    startAutoSave(id);loadInv(id);renderInv();startGame();
-    const world=loadWorld(id);
-    if(world&&world.buildings){world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');}
+    startAutoSave(id);
+    showFloat('👑 Ти став хостом!');
+    addChat('👑','Хост пішов. Ти тепер хост кімнати '+id);
   });
 }
+
 function exitToLobby(){
+  // If host is leaving and there are clients — transfer host to first client
+  if(isHost&&Object.keys(clientConns).length>0){
+    const firstClientId=Object.keys(clientConns)[0];
+    // Tell chosen client to become host, send all buildings data
+    try{
+      clientConns[firstClientId].send({
+        type:'become_host',
+        roomId,
+        buildings:placed.map(b=>({t:b.type,x:b.x,y:b.y,z:b.z,r:b.ry,open:b.mesh&&(b.mesh.userData.doorOpen||b.mesh.userData.winOpen)||false,pin:b.pin||'',locked:b.locked||false}))
+      });
+    }catch(e){}
+    // Tell all other clients who the new host will be
+    Object.entries(clientConns).forEach(([id,c])=>{
+      if(id!==firstClientId)try{c.send({type:'new_host_incoming',newHostId:firstClientId});}catch(e){}
+    });
+  }
   broadcast({type:'bye'});
   if(isHost){clearInterval(announceInt);if(window._worldSaveInt)clearInterval(window._worldSaveInt);saveWorld(roomId);removeRoom(roomId);}
   saveInv(roomId);
