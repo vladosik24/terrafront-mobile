@@ -459,7 +459,7 @@ function placeBuilding(){
   }
   if(!ghostMesh){tryInteract();return;}
   const def=BDEFS[selBldType];if(!def)return;
-  if(!Object.entries(def.cost).every(([k,v])=>inv[k]>=v)){showFloat('❌ '+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>k+'×'+(v-inv[k])).join(', '));return;}
+  if(!Object.entries(def.cost).every(([k,v])=>inv[k]>=v)){showFloat('❌ '+Object.entries(def.cost).filter(([k,v])=>inv[k]<v).map(([k,v])=>`${RES_UA[k]||k}×${v-inv[k]}`).join(', '));return;}
   Object.entries(def.cost).forEach(([k,v])=>inv[k]-=v);
   const bx=ghostMesh.position.x,by=ghostMesh.position.y,bz=ghostMesh.position.z,bry=ghostMesh.rotation.y;
   spawnBld(selBldType,bx,by,bz,bry);
@@ -631,6 +631,7 @@ function spawnBld(type,x,y,z,ry){
 
 // ══ INVENTORY ══
 const inv={wood:0,stone:0,metal:0,fiber:0,coal:0,food:0,meat:0,axe:0,spear:0,sword:0,bow:0,arrow:0};
+const RES_UA={wood:'дерево',stone:'камінь',metal:'метал',fiber:'волокно',coal:'вугілля',food:'їжа',meat:'мясо',axe:'сокира',spear:'спис',sword:'меч',bow:'лук',arrow:'стріла'};
 const RECIPES=[
   {id:'axe',name:'Сокира',icon:'🪓',cost:{wood:5,stone:3},desc:'Рубає дерева'},
   {id:'spear',name:'Спис',icon:'🗡️',cost:{wood:4,stone:2},desc:'Бій 25dmg'},
@@ -648,7 +649,7 @@ function renderInv(){
   const cl=document.getElementById('craftList');cl.innerHTML='';
   RECIPES.forEach(r=>{
     const can=Object.entries(r.cost).every(([k,v])=>inv[k]>=v);
-    const cost=Object.entries(r.cost).map(([k,v])=>`${k}×${v}`).join(', ');
+    const cost=Object.entries(r.cost).map(([k,v])=>`${RES_UA[k]||k}×${v}`).join(', ');
     const d=document.createElement('div');d.className='recipe';
     d.innerHTML=`<div class="ico">${r.icon}</div><div class="info"><div class="rn">${r.name}</div><div class="rc">${cost} — ${r.desc}</div></div><button class="cb"${can?'':' disabled'}>Крафт</button>`;
     d.querySelector('.cb').addEventListener('click',e=>{e.stopPropagation();if(!can)return;Object.entries(r.cost).forEach(([k,v])=>inv[k]-=v);if(r.gives)Object.entries(r.gives).forEach(([k,v])=>inv[k]+=v);else inv[r.id]++;showFloat(`✅ ${r.icon} ${r.name}!`);renderInv();});
