@@ -403,9 +403,43 @@ function handleMsg(pid,raw){let d;try{d=typeof raw==='string'?JSON.parse(raw):ra
 function setupPeer(id,cb){if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}myPeer=new Peer(id);myPeer.on('open',rid=>{myId=rid;setStatus('✅ ID: '+rid);if(cb)cb(rid);});myPeer.on('connection',conn=>{conn.on('open',()=>{if(!isHost)return;if(Object.keys(clientConns).length>=5){conn.send(JSON.stringify({type:'full'}));conn.close();return;}clientConns[conn.peer]=conn;conn.on('data',data=>{const raw=typeof data==='object'?JSON.stringify(data):data;handleMsg(conn.peer,raw);});conn.on('close',()=>{handleMsg(conn.peer,JSON.stringify({type:'bye'}));delete clientConns[conn.peer];updPC();});});});myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});myPeer.on('error',err=>{if(err.type==='unavailable-id')setupPeer('tf-'+Math.random().toString(36).slice(2,10),cb);else if(err.type==='peer-unavailable')setStatus('❌ Кімнату не знайдено.');else setStatus('❌ '+err.type);});}
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
 async function refreshRooms(){setStatus('🔄 Оновлення...');const rooms=await fetchRooms();const now=Date.now();const active=Object.entries(rooms).filter(([,r])=>now-(r.ts||0)<300000);const list=document.getElementById('roomList');if(!active.length){list.innerHTML='<div style="padding:14px;text-align:center;color:#555">Немає кімнат 🌲</div>';setStatus('');}else{list.innerHTML='';active.forEach(([id,r])=>{const d=document.createElement('div');d.className='room';const ico=CICONS[r.char]||'🧑';d.innerHTML=`<div>${ico} <b>${r.nick}</b>'s World</div><div style="font-size:11px;color:#81c784">👥 ${r.count||1}/6</div>`;d.addEventListener('click',()=>joinRoom(id,r.nick));list.appendChild(d);});setStatus(`Знайдено: ${active.length}`);}}
-function resetNet(){isHost=false;hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}document.getElementById('createBtn').disabled=false;}
+function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}document.getElementById('createBtn').disabled=false;}
 function createRoom(){resetNet();roomId='tf-'+Math.random().toString(36).slice(2,9);isHost=true;setStatus('⏳ Створюємо...');document.getElementById('createBtn').disabled=true;setupPeer(roomId,()=>{setStatus('✅ Кімната: '+roomId);saveRoom(roomId,myNick);announceRoom(roomId,myNick,1);announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length),15000);startGame();});}
-function joinRoom(id,hostNick){resetNet();id=id.trim().toLowerCase();roomId=id;isHost=false;setStatus('🔗 Підключаємось...');document.getElementById('createBtn').disabled=true;saveRoom(id,hostNick||'Хост');setupPeer('tf-'+Math.random().toString(36).slice(2,12),()=>{hostConn=myPeer.connect(id,{reliable:true,serialization:'json'});let conn=false;hostConn.on('open',()=>{conn=true;setStatus('✅ Підключено!');hostConn.send(JSON.stringify({type:'hello',nick:myNick,char:myChar}));startGame();});hostConn.on('data',data=>{const raw=typeof data==='object'?JSON.stringify(data):data;handleMsg(id,raw);});hostConn.on('close',()=>addChat('🔌','Хост відключився'));hostConn.on('error',()=>setStatus('❌ Помилка з\'єднання'));setTimeout(()=>{if(!conn){setStatus('❌ Не вдалось. Спробуй ще.');document.getElementById('createBtn').disabled=false;}},10000);});}
+function joinRoom(id,hostNick){
+  resetNet();
+  id=id.trim().toLowerCase();
+  // If this was our own hosted room - recreate it instead of joining
+  if(id===roomId||id.startsWith('tf-')){
+    // Try to join, if peer-unavailable it means room is dead
+  }
+  roomId=id;isHost=false;
+  setStatus('🔗 Підключаємось...');
+  document.getElementById('createBtn').disabled=true;
+  saveRoom(id,hostNick||'Хост');
+  const clientId='tf-'+Math.random().toString(36).slice(2,12);
+  setupPeer(clientId,()=>{
+    hostConn=myPeer.connect(id,{reliable:true,serialization:'json'});
+    let conn=false;
+    hostConn.on('open',()=>{
+      conn=true;
+      setStatus('✅ Підключено!');
+      hostConn.send(JSON.stringify({type:'hello',nick:myNick,char:myChar}));
+      startGame();
+    });
+    hostConn.on('data',data=>{const raw=typeof data==='object'?JSON.stringify(data):data;handleMsg(id,raw);});
+    hostConn.on('close',()=>addChat('🔌','Хост відключився'));
+    hostConn.on('error',e=>{
+      setStatus('❌ Кімната недоступна. Можливо хост вийшов.');
+      document.getElementById('createBtn').disabled=false;
+    });
+    setTimeout(()=>{
+      if(!conn){
+        setStatus('❌ Кімната не відповідає. Можливо хост вийшов.');
+        document.getElementById('createBtn').disabled=false;
+      }
+    },8000);
+  });
+}
 function exitToLobby(){broadcast({type:'bye'});if(isHost){clearInterval(announceInt);removeRoom(roomId);}resetNet();document.getElementById('game').style.display='none';document.getElementById('lobby').style.display='flex';if(myMesh){scene.remove(myMesh);myMesh=null;}buildMode=false;document.getElementById('buildBar').classList.remove('on');if(ghostMesh){scene.remove(ghostMesh);ghostMesh=null;}renderSaved();refreshRooms();}
 let camMode=0;
 const CAM3P=new THREE.Vector3(0,2.2,4.5);
