@@ -381,47 +381,40 @@ async function apiFetch(url,opts={}){
 }
 
 async function fetchRooms(){
-  // Always start with localStorage (instant, works same device)
+  // Instant: localStorage cache
   let cache={};
   try{const s=localStorage.getItem('tf_rooms_cache');if(s)cache=JSON.parse(s)||{};}catch(e){}
-
-  // Try jsonbin.io (cross-device)
+  // Background: try JSONBin (don't block)
   try{
     const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
-    if(r.ok){
-      const d=await r.json();
-      if(d&&typeof d==='object'){
-        // jsonbin returns {rooms:{...}} or direct object
-        const remote=d.rooms||d;
-        if(typeof remote==='object')cache={...cache,...remote};
-      }
-    }
-  }catch(e){console.log('jsonbin fetch failed:',e.message||e);}
-
+    if(r.ok){const d=await r.json();const remote=d&&(d.rooms||d);if(typeof remote==='object')cache={...cache,...remote};}
+  }catch(e){}
   return {...cache,..._local};
 }
 
-async function announceRoom(rid,nick,count,offline=false,peerId=''){
+async function announceRoom(rid,nick,count,offline=false){
   const now=Date.now();
-  const entry={nick,count,char:myChar,ts:now,offline,peerId:peerId||myId||''};
+  const entry={nick,count,char:myChar,ts:now,offline};
   _local[rid]=entry;
   if(BC)BC.postMessage({type:'ru',id:rid,entry});
+  // Save locally immediately
   try{
     const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
     cache[rid]=entry;
     Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>2*3600*1000)delete cache[k];});
     localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
-  try{
-    let current={};
+  // Push to JSONBin in background (fire and forget)
+  setTimeout(async()=>{
     try{
+      let current={};
       const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
       if(r.ok){const d=await r.json();current=(d&&(d.rooms||d))||{};}
+      current[rid]=entry;
+      Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>2*3600*1000)delete current[k];});
+      await apiFetch(BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(current)});
     }catch(e){}
-    current[rid]=entry;
-    Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>2*3600*1000)delete current[k];});
-    await apiFetch(BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(current)});
-  }catch(e){console.log('jsonbin write failed:',e.message||e);}
+  },0);
 }
 
 async function removeRoom(rid){
@@ -1947,22 +1940,54 @@ function setupConn(conn){
 
 function setupPeer(id,cb){
   if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  myPeer=new Peer(id);
-  myPeer.on('open',rid=>{myId=rid;if(cb)cb(rid);});
-  myPeer.on('connection',conn=>setupConn(conn));
-  myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
-  myPeer.on('error',err=>{
-    if(err.type==='unavailable-id'){
-      setupPeer('tf-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),cb);
-    }else if(err.type==='peer-unavailable'){
-      setStatus('❌ Кімната не знайдена або хост офлайн.');
-      document.getElementById('createBtn').disabled=false;
-      if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
-    }else{
-      setStatus('❌ Мережева помилка: '+err.type);
-      document.getElementById('createBtn').disabled=false;
+  let done=false;
+  function finish(rid){if(done)return;done=true;clearTimeout(timer);myId=rid;cb(rid);}
+
+  // Try PeerJS with explicit server config
+  const configs=[
+    // Default PeerJS cloud
+    {host:'0.peerjs.com',port:443,path:'/',secure:true,key:'peerjs'},
+    // Metered.ca free TURN (no key needed for signaling)
+    {host:'peerjs.fly.dev',port:443,path:'/',secure:true},
+  ];
+  let attempt=0;
+
+  function tryNext(){
+    if(done)return;
+    if(attempt>=configs.length){
+      // All failed — run solo (no multiplayer)
+      console.warn('[Peer] all servers failed, solo mode');
+      finish('solo-'+Math.random().toString(36).slice(2,8));
+      return;
     }
-  });
+    if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+    const cfg=configs[attempt++];
+    console.log('[Peer] trying',cfg.host);
+    try{
+      myPeer=new Peer(id,{...cfg,debug:0,config:{iceServers:[
+        {urls:'stun:stun.l.google.com:19302'},
+        {urls:'stun:stun2.l.google.com:19302'},
+      ]}});
+      myPeer.on('open',rid=>{console.log('[Peer] open',rid);finish(rid);});
+      myPeer.on('connection',conn=>setupConn(conn));
+      myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
+      myPeer.on('error',err=>{
+        console.warn('[Peer] error',err.type,'on',cfg.host);
+        if(err.type==='peer-unavailable'){
+          setStatus('❌ Хост офлайн або ID не існує.');
+          document.getElementById('createBtn').disabled=false;
+          if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
+        }else if(!done){
+          clearTimeout(timer);
+          timer=setTimeout(tryNext,100);
+        }
+      });
+    }catch(e){setTimeout(tryNext,100);}
+    // Timeout per server
+    timer=setTimeout(tryNext,4000);
+  }
+
+  let timer=setTimeout(tryNext,0);
 }
 
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
