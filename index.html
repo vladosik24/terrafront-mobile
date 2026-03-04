@@ -491,14 +491,66 @@ function mat(color,rough=0.8,metal=0){return new THREE.MeshStandardMaterial({col
 function mkChar(type){
   const cfg=CHARS[type]||CHARS.male,g=new THREE.Group();
   const bM=mat(cfg.bodyColor,0.8),pM=mat(cfg.pantsColor,0.9),sM=mat(cfg.skinColor,0.9),hM=mat(cfg.hairColor,0.95),shM=mat(cfg.shoeColor,0.85),beM=mat(cfg.beltColor,0.7);
-  const legL=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.72,7),pM);legL.position.set(-0.14,-0.56,0);legL.name='legL';g.add(legL);
-  const legR=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.72,7),pM);legR.position.set(0.14,-0.56,0);legR.name='legR';g.add(legR);
-  [-0.14,0.14].forEach((ox,i)=>{const sh=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.34),shM);sh.position.set(ox,-0.97,0.06);sh.name=i===0?'shoeL':'shoeR';g.add(sh);});
+
+  // ── Legs with hip pivots ──
+  function mkLeg(side){
+    const hip=new THREE.Group(); // pivot at hip
+    hip.position.set(side*0.14,-0.34,0);
+    // Upper leg
+    const uLeg=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.42,7),pM);
+    uLeg.position.set(0,-0.21,0); // offset down from pivot
+    hip.add(uLeg);
+    // Knee pivot
+    const knee=new THREE.Group();
+    knee.position.set(0,-0.42,0);
+    // Lower leg
+    const lLeg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.08,0.38,7),pM);
+    lLeg.position.set(0,-0.19,0);
+    knee.add(lLeg);
+    // Shoe
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.1,0.32),shM);
+    sh.position.set(0,-0.4,0.06);
+    knee.add(sh);
+    hip.add(knee);
+    hip.userData.knee=knee;
+    hip.name=side<0?'legL':'legR';
+    return hip;
+  }
+  const legL=mkLeg(-1),legR=mkLeg(1);
+  g.add(legL);g.add(legR);
+
+  // ── Torso ──
   const torso=new THREE.Mesh(new THREE.BoxGeometry(0.56,0.68,0.3),bM);torso.position.y=0.02;g.add(torso);
   const belt=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.08,0.33),beM);belt.position.y=-0.3;g.add(belt);
-  const armL=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.38,6),bM);armL.position.set(-0.4,0.1,0);armL.rotation.z=-0.25;armL.name='armL';g.add(armL);
-  const armR=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.38,6),bM);armR.position.set(0.4,0.1,0);armR.rotation.z=0.25;armR.name='armR';g.add(armR);
-  [-0.4,0.4].forEach(ox=>{const fi=new THREE.Mesh(new THREE.SphereGeometry(0.09,7,7),sM);fi.position.set(ox*1.12,-0.27,0);g.add(fi);});
+
+  // ── Arms with shoulder pivots ──
+  function mkArm(side){
+    const shoulder=new THREE.Group(); // pivot at shoulder
+    shoulder.position.set(side*0.38,0.3,0);
+    shoulder.rotation.z=side*0.18; // natural resting angle
+    // Upper arm
+    const uArm=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.32,6),bM);
+    uArm.position.set(0,-0.16,0);
+    shoulder.add(uArm);
+    // Elbow pivot
+    const elbow=new THREE.Group();
+    elbow.position.set(0,-0.32,0);
+    const lArm=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.07,0.28,6),sM);
+    lArm.position.set(0,-0.14,0);
+    elbow.add(lArm);
+    // Fist
+    const fist=new THREE.Mesh(new THREE.SphereGeometry(0.075,7,7),sM);
+    fist.position.set(0,-0.3,0);
+    elbow.add(fist);
+    shoulder.add(elbow);
+    shoulder.userData.elbow=elbow;
+    shoulder.name=side<0?'armL':'armR';
+    return shoulder;
+  }
+  const armL=mkArm(-1),armR=mkArm(1);
+  g.add(armL);g.add(armR);
+
+  // ── Head & neck ──
   const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.14,7),sM);neck.position.y=0.41;g.add(neck);
   const head=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.42,0.38),sM);head.position.y=0.64;g.add(head);
   const eG=new THREE.SphereGeometry(0.05,8,8),eM2=mat(0x1a1a2e,1);
@@ -1259,9 +1311,13 @@ function takeDmg(d){if(isDead)return;playerHP=Math.max(0,playerHP-d);updHP();sho
 function eatFood(){if(inv.food<=0){showFloat('❌ Немає їжі');return;}inv.food--;hunger=Math.min(100,hunger+35);playerHP=Math.min(maxHP,playerHP+15);updHP();showFloat('🍖 +15 HP');renderInv();}
 function die(){
   isDead=true;
-  // Save inventory on death so it persists on page reload
-  saveInv(roomId);
-  // Drop items on death (so others can loot, but player keeps their inv on respawn)
+  // Snapshot and save inventory BEFORE any changes — persists through reload
+  const invSnapshot=JSON.stringify(inv);
+  try{
+    if(roomId)localStorage.setItem('tf_inv_'+roomId,invSnapshot);
+    localStorage.setItem('tf_inv_global_'+myNick,invSnapshot);
+  }catch(e){}
+  // Create drop for others to loot (player keeps their inv)
   const dropItems=[];
   Object.entries(inv).forEach(([k,v])=>{if(v>0)dropItems.push({k,v});});
   if(dropItems.length){
@@ -1272,7 +1328,6 @@ function die(){
 }
 document.getElementById('respBtn').addEventListener('click',()=>{
   playerHP=maxHP;hunger=100;
-  // Inventory is kept on respawn — already saved in die()
   playerPos.set(Math.random()*20-10,5,Math.random()*20-10);
   playerVelY=0;isDead=false;
   document.getElementById('death').style.display='none';
@@ -1891,8 +1946,51 @@ function gameLoop(){
     if(camMode===1){const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z;camera.position.set(cx,playerPos.y+CAM3P.y,cz);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));}
     else if(camMode===2){camera.position.set(playerPos.x+Math.sin(yaw)*3.2,playerPos.y+1.4,playerPos.z+Math.cos(yaw)*3.2);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));}
     else{camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
-    if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;myMesh.visible=(camMode===1||camMode===2);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}
-    updHunger(dt);checkPickup();
+    if(myMesh){
+      myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);
+      myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;
+      myMesh.visible=(camMode===1||camMode===2);
+      const sw=Math.sin(legPh);       // -1..1 walk cycle
+      const sw2=Math.sin(legPh*2);    // knee/elbow secondary
+      myMesh.children.forEach(c=>{
+        if(c.name==='legL'){
+          c.rotation.x = moving ? sw*0.55 : Math.sin(now*0.001)*0.02; // hip swing
+          if(c.userData.knee) c.userData.knee.rotation.x = moving ? Math.max(0,sw*0.45) : 0; // knee only bends forward
+        } else if(c.name==='legR'){
+          c.rotation.x = moving ? -sw*0.55 : Math.sin(now*0.001+0.5)*0.02;
+          if(c.userData.knee) c.userData.knee.rotation.x = moving ? Math.max(0,-sw*0.45) : 0;
+        } else if(c.name==='armL'){
+          if(moving){
+            c.rotation.x = -sw*0.5;  // opposite to legL
+            if(c.userData.elbow) c.userData.elbow.rotation.x = Math.max(0,-sw*0.3);
+          } else {
+            c.rotation.x = Math.sin(now*0.0008)*0.04; // idle breath
+            if(c.userData.elbow) c.userData.elbow.rotation.x = 0;
+          }
+        } else if(c.name==='armR'){
+          if(moving){
+            c.rotation.x = sw*0.5;
+            if(c.userData.elbow) c.userData.elbow.rotation.x = Math.max(0,sw*0.3);
+          } else {
+            c.rotation.x = Math.sin(now*0.0008+0.3)*0.04;
+            if(c.userData.elbow) c.userData.elbow.rotation.x = 0;
+          }
+        }
+      });
+      // Idle body bob + walk bounce
+      if(moving){
+        myMesh.position.y += Math.abs(sw)*0.03; // subtle vertical bounce
+      }
+      // Jump pose — arms up, legs together
+      if(!isOnGround){
+        myMesh.children.forEach(c=>{
+          if(c.name==='legL'){c.rotation.x=-0.25;if(c.userData.knee)c.userData.knee.rotation.x=0.5;}
+          else if(c.name==='legR'){c.rotation.x=-0.25;if(c.userData.knee)c.userData.knee.rotation.x=0.5;}
+          else if(c.name==='armL'){c.rotation.x=-0.7;if(c.userData.elbow)c.userData.elbow.rotation.x=0.4;}
+          else if(c.name==='armR'){c.rotation.x=-0.7;if(c.userData.elbow)c.userData.elbow.rotation.x=0.4;}
+        });
+      }
+    }    updHunger(dt);checkPickup();
     if(!buildMode){castRay();updTgt(tTree);}
     else{
       if(selBldType==='__move'&&movingBld!==-1){
@@ -1972,7 +2070,7 @@ function gameLoop(){
       }
       tHPEl.style.display='none';
     }
-    if(now-lastInvSave>5000){lastInvSave=now;saveInv(roomId);}
+    if(now-lastInvSave>5000){lastInvSave=now;saveInv(roomId);} // save inv for ALL players every 5s
     if(now-lastSync>100){
       lastSync=now;
       if(isHost){
@@ -1987,7 +2085,33 @@ function gameLoop(){
   }
   const ft=now*0.003;
   fireLights.forEach(fl=>{const f=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;fl.light.intensity=fl.base*f;if(fl.mesh){fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18;fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12;}if(fl.innerMesh)fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22;});
-  for(const[pid,rp]of Object.entries(remPlayers)){rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);rp.mesh.rotation.y=rp.yaw+Math.PI;const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';}
+  for(const[pid,rp]of Object.entries(remPlayers)){
+    rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);
+    rp.mesh.rotation.y=rp.yaw+Math.PI;
+    // Animate remote player limbs based on movement
+    if(!rp._legPh)rp._legPh=0;
+    const rpMoving=rp._prevX!==undefined&&(Math.abs(rp.x-rp._prevX)>0.001||Math.abs(rp.z-rp._prevZ)>0.001);
+    if(rpMoving)rp._legPh+=dt*8;
+    rp._prevX=rp.x;rp._prevZ=rp.z;
+    const rsw=Math.sin(rp._legPh);
+    rp.mesh.children.forEach(c=>{
+      if(c.name==='legL'){
+        c.rotation.x=rpMoving?rsw*0.55:0;
+        if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?Math.max(0,rsw*0.45):0;
+      }else if(c.name==='legR'){
+        c.rotation.x=rpMoving?-rsw*0.55:0;
+        if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?Math.max(0,-rsw*0.45):0;
+      }else if(c.name==='armL'){
+        c.rotation.x=rpMoving?-rsw*0.5:0;
+        if(c.userData.elbow)c.userData.elbow.rotation.x=rpMoving?Math.max(0,-rsw*0.3):0;
+      }else if(c.name==='armR'){
+        c.rotation.x=rpMoving?rsw*0.5:0;
+        if(c.userData.elbow)c.userData.elbow.rotation.x=rpMoving?Math.max(0,rsw*0.3):0;
+      }
+    });
+    const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);
+    if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';
+  }
   renderer.render(scene,camera);
 }
 
