@@ -811,86 +811,8 @@ function updateMonsters(dt,now){
   });
 }
 
-// ══ EXTENDED CASTRAY ══
-let tAnimalTarget=null,tMonsterTarget=null,tMushroom=null,tBerry=null,tCave=null,tRuin=null;
-const _origCastRay=castRay;
-castRay=function(){
-  _origCastRay();
-  tAnimalTarget=null;tMonsterTarget=null;tMushroom=null;tBerry=null;tCave=null;tRuin=null;
-  RAY.setFromCamera(CTR,camera);
-  for(const a of animals){if(!a.alive)continue;const h=RAY.intersectObject(a.group,true);if(h.length&&h[0].distance<6){tAnimalTarget=a;return;}}
-  for(const m of monsters){if(!m.alive)continue;const h=RAY.intersectObject(m.group,true);if(h.length&&h[0].distance<6){tMonsterTarget=m;return;}}
-  for(const mu of mushrooms){if(!mu.alive)continue;const h=RAY.intersectObject(mu.group,true);if(h.length&&h[0].distance<4){tMushroom=mu;return;}}
-  for(const b of berries){if(!b.alive)continue;const h=RAY.intersectObject(b.group,true);if(h.length&&h[0].distance<4){tBerry=b;return;}}
-  // Caves and ruins by proximity
-  for(const c of caves){if(Math.sqrt((playerPos.x-c.x)**2+(playerPos.z-c.z)**2)<3){tCave=c;return;}}
-  for(const r of ruins){if(Math.sqrt((playerPos.x-r.x)**2+(playerPos.z-r.z)**2)<4){tRuin=r;return;}}
-};
+// ══ EXTENDED TARGETS declared above in castRay ══
 
-// Patch doAction for new targets
-const _origDoAction=doAction;
-doAction=function(){
-  if(isDead)return;
-  if(buildMode){placeBuilding();return;}
-  const now=performance.now();
-  const cooldown=inv.axe>0?300:600;
-  if(now-lastAct<cooldown)return;
-  lastAct=now;
-  if(tryInteract())return;
-  castRay();
-  if(tPlayer){const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});showFloat('⚔️ -'+dmg);return;}
-  if(tAnimalTarget){
-    const a=tAnimalTarget;
-    shake(a.group);
-    const dmg=inv.sword>0?20:inv.spear>0?15:charDmg();
-    a.hp-=dmg;showFloat('🗡️ '+a.type+' -'+dmg);
-    if(a.hp<=0){
-      a.alive=false;a.group.visible=false;
-      const drops=a.type==='boar'?{meat:3,fiber:1}:a.type==='deer'?{meat:2}:{meat:1,fiber:1};
-      Object.entries(drops).forEach(([k,v])=>inv[k]=(inv[k]||0)+v);
-      renderInv();showFloat('🥩 Здобич!');
-      setTimeout(()=>{a.alive=true;a.group.visible=true;a.hp=a.maxHp;a.x=(Math.random()-.5)*150;a.z=(Math.random()-.5)*150;},60000);
-    }
-    return;
-  }
-  if(tMonsterTarget){
-    const m=tMonsterTarget;
-    shake(m.group);
-    const dmg=inv.sword>0?35:inv.spear>0?20:charDmg();
-    m.hp-=dmg;showFloat('⚔️ '+m.type+' -'+dmg);
-    return;
-  }
-  if(tMushroom){
-    const mu=tMushroom;mu.alive=false;mu.group.visible=false;
-    if(mu.poison){playerHP=Math.max(1,playerHP-20);updHP();showFloat('☠️ Отруйний гриб! -20HP');}
-    else{hunger=Math.min(100,hunger+20);showFloat('🍄 +20 голод');}
-    setTimeout(()=>{mu.alive=true;mu.group.visible=true;},45000);
-    return;
-  }
-  if(tBerry){
-    const b=tBerry;b.alive=false;b.group.visible=false;
-    inv.food++;hunger=Math.min(100,hunger+15);renderInv();showFloat('🫐 +їжа +15 голод');
-    b.regrowAt=Date.now()+30000;
-    setTimeout(()=>{b.alive=true;b.group.visible=true;},30000);
-    return;
-  }
-  if(tCave){
-    if(!tCave.looted){tCave.looted=true;inv.stone+=5;inv.metal+=2;if(Math.random()<0.3)inv.coal+=3;renderInv();showFloat('⛏️ Печера! +камінь +метал');}
-    else showFloat('🕳️ Печера вже досліджена');
-    return;
-  }
-  if(tRuin){
-    if(!tRuin.looted){tRuin.looted=true;const loot=['wood','stone','fiber','food','metal'];const k=loot[Math.floor(Math.random()*loot.length)];inv[k]=(inv[k]||0)+3+Math.floor(Math.random()*4);renderInv();showFloat('🏚️ Руїни! Знайдено скарб!');}
-    else showFloat('🏚️ Руїни вже обшукані');
-    return;
-  }
-  if(tTree){shake(tTree.group);const hits=inv.axe>0?2:1;tTree.hp-=hits;showFloat(inv.axe>0?'🪓 -'+hits:'🤜 -1');if(tTree.hp<=0){fellTree(tTree);if(Math.random()<0.1)startFire(tTree.x,tTree.z,tTree.group.position.y);}return;}
-  if(tRock){shake(tRock.mesh);inv.stone+=1+(inv.axe>0?1:0);if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}else showFloat('🪨 +1');return;}
-  if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);return;}
-  // Near water
-  if(nearWater(playerPos.x,playerPos.z)){hunger=Math.min(100,hunger+30);playerHP=Math.min(maxHP,playerHP+5);updHP();showFloat('💧 +вода +30 голод');return;}
-  showFloat('❌ Немає цілі');
-};
 
 function mkChar(type){
   const cfg=CHARS[type]||CHARS.male,g=new THREE.Group();
@@ -1731,7 +1653,22 @@ function showFloat(msg){const el=document.getElementById('float');el.textContent
 
 // ══ RAYCASTING / COMBAT ══
 let tTree=null,tRock=null,tPlayer=null,tPlant=null;
-function castRay(){RAY.setFromCamera(CTR,camera);tTree=null;tRock=null;tPlayer=null;tPlant=null;for(const[pid,rp]of Object.entries(remPlayers)){const h=RAY.intersectObject(rp.mesh,true);if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;}}for(const t of trees){if(!t.alive)continue;const h=RAY.intersectObject(t.group,true);if(h.length&&h[0].distance<9){tTree=t;return;}}for(const r of rocks){const h=RAY.intersectObject(r.mesh,true);if(h.length&&h[0].distance<7){tRock=r;return;}}for(const p of plants){if(!p.alive)continue;const h=RAY.intersectObject(p.group,true);if(h.length&&h[0].distance<5){tPlant=p;return;}}}
+let tAnimalTarget=null,tMonsterTarget=null,tMushroom=null,tBerry=null,tCave=null,tRuin=null;
+function castRay(){
+  RAY.setFromCamera(CTR,camera);
+  tTree=null;tRock=null;tPlayer=null;tPlant=null;
+  tAnimalTarget=null;tMonsterTarget=null;tMushroom=null;tBerry=null;tCave=null;tRuin=null;
+  for(const[pid,rp]of Object.entries(remPlayers)){const h=RAY.intersectObject(rp.mesh,true);if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;}}
+  if(typeof animals!=='undefined')for(const a of animals){if(!a.alive)continue;const h=RAY.intersectObject(a.group,true);if(h.length&&h[0].distance<6){tAnimalTarget=a;return;}}
+  if(typeof monsters!=='undefined')for(const m of monsters){if(!m.alive)continue;const h=RAY.intersectObject(m.group,true);if(h.length&&h[0].distance<6){tMonsterTarget=m;return;}}
+  for(const t of trees){if(!t.alive)continue;const h=RAY.intersectObject(t.group,true);if(h.length&&h[0].distance<9){tTree=t;return;}}
+  for(const r of rocks){const h=RAY.intersectObject(r.mesh,true);if(h.length&&h[0].distance<7){tRock=r;return;}}
+  for(const p of plants){if(!p.alive)continue;const h=RAY.intersectObject(p.group,true);if(h.length&&h[0].distance<5){tPlant=p;return;}}
+  if(typeof mushrooms!=='undefined')for(const mu of mushrooms){if(!mu.alive)continue;const h=RAY.intersectObject(mu.group,true);if(h.length&&h[0].distance<4){tMushroom=mu;return;}}
+  if(typeof berries!=='undefined')for(const b of berries){if(!b.alive)continue;const h=RAY.intersectObject(b.group,true);if(h.length&&h[0].distance<4){tBerry=b;return;}}
+  if(typeof caves!=='undefined')for(const c of caves){if(Math.sqrt((playerPos.x-c.x)**2+(playerPos.z-c.z)**2)<3){tCave=c;return;}}
+  if(typeof ruins!=='undefined')for(const r of ruins){if(Math.sqrt((playerPos.x-r.x)**2+(playerPos.z-r.z)**2)<4){tRuin=r;return;}}
+}
 const tHPEl=document.getElementById('tgtHP'),tHPBar=document.getElementById('tgtBar');
 function updTgt(t){if(!t){tHPEl.style.display='none';return;}tHPEl.style.display='block';const p=(t.hp/t.maxHp)*100;tHPBar.style.width=p+'%';tHPBar.style.background=p>60?'#4caf50':p>30?'#ff9800':'#f44336';}
 function shake(mesh){const o=mesh.position.clone();let t=0;(function s(){t+=0.08;mesh.position.x=o.x+Math.sin(t*30)*0.08*Math.exp(-t*3);if(t<1.2)requestAnimationFrame(s);else mesh.position.copy(o);})();}
@@ -1741,38 +1678,57 @@ function doAction(){
   if(isDead)return;
   if(buildMode){placeBuilding();return;}
   const now=performance.now();
-  const cooldown=inv.axe>0?300:600; // axe = 2x faster
+  const cooldown=inv.axe>0?300:600;
   if(now-lastAct<cooldown)return;
   lastAct=now;
   if(tryInteract())return;
   castRay();
-  if(tPlayer){
-    const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();
-    broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});
-    showFloat('⚔️ -'+dmg);return;
-  }
-  if(tTree){
-    shake(tTree.group);
-    const hits=inv.axe>0?2:1; // axe deals 2 damage per swing
-    tTree.hp-=hits;
-    showFloat(inv.axe>0?'🪓 -'+hits:'🤜 -1');
-    if(tTree.hp<=0)fellTree(tTree);
+  if(tPlayer){const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});showFloat('⚔️ -'+dmg);return;}
+  if(tAnimalTarget){
+    const a=tAnimalTarget;shake(a.group);
+    const dmg=inv.sword>0?20:inv.spear>0?15:charDmg();
+    a.hp-=dmg;showFloat('🗡️ '+a.type+' -'+dmg);
+    if(a.hp<=0){a.alive=false;a.group.visible=false;
+      const drops=a.type==='boar'?{meat:3,fiber:1}:a.type==='deer'?{meat:2}:{meat:1,fiber:1};
+      Object.entries(drops).forEach(([k,v])=>inv[k]=(inv[k]||0)+v);
+      renderInv();showFloat('🥩 Здобич!');
+      setTimeout(()=>{a.alive=true;a.group.visible=true;a.hp=a.maxHp;a.x=(Math.random()-.5)*150;a.z=(Math.random()-.5)*150;},60000);
+    }
     return;
   }
-  if(tRock){
-    shake(tRock.mesh);
-    inv.stone+=1+(inv.axe>0?1:0);
-    if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}
-    else showFloat('🪨 +1');
+  if(tMonsterTarget){
+    const m=tMonsterTarget;shake(m.group);
+    const dmg=inv.sword>0?35:inv.spear>0?20:charDmg();
+    m.hp-=dmg;showFloat('⚔️ '+m.type+' -'+dmg);
     return;
   }
-  if(tPlant){
-    tPlant.alive=false;tPlant.group.visible=false;
-    inv.fiber+=1+Math.floor(Math.random()*2);
-    showFloat('🌿 +волокно');
-    setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);
+  if(tMushroom){
+    const mu=tMushroom;mu.alive=false;mu.group.visible=false;
+    if(mu.poison){playerHP=Math.max(1,playerHP-20);updHP();showFloat('☠️ Отруйний гриб! -20HP');}
+    else{hunger=Math.min(100,hunger+20);showFloat('🍄 +20 голод');}
+    setTimeout(()=>{mu.alive=true;mu.group.visible=true;},45000);
     return;
   }
+  if(tBerry){
+    const b=tBerry;b.alive=false;b.group.visible=false;
+    inv.food++;hunger=Math.min(100,hunger+15);renderInv();showFloat('🫐 +їжа +15 голод');
+    setTimeout(()=>{b.alive=true;b.group.visible=true;},30000);
+    return;
+  }
+  if(tCave){
+    if(!tCave.looted){tCave.looted=true;inv.stone+=5;inv.metal+=2;if(Math.random()<0.3)inv.coal+=3;renderInv();showFloat('⛏️ Печера! +камінь +метал');}
+    else showFloat('🕳️ Печера вже досліджена');
+    return;
+  }
+  if(tRuin){
+    if(!tRuin.looted){tRuin.looted=true;const lk=['wood','stone','fiber','food','metal'];const k=lk[Math.floor(Math.random()*lk.length)];inv[k]=(inv[k]||0)+3+Math.floor(Math.random()*4);renderInv();showFloat('🏚️ Руїни! Знайдено скарб!');}
+    else showFloat('🏚️ Руїни вже обшукані');
+    return;
+  }
+  if(tTree){shake(tTree.group);const hits=inv.axe>0?2:1;tTree.hp-=hits;showFloat(inv.axe>0?'🪓 -'+hits:'🤜 -1');if(tTree.hp<=0){fellTree(tTree);if(Math.random()<0.1&&typeof startFire!=='undefined')startFire(tTree.x,tTree.z,tTree.group.position.y);}return;}
+  if(tRock){shake(tRock.mesh);inv.stone+=1+(inv.axe>0?1:0);if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}else showFloat('🪨 +1');return;}
+  if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);return;}
+  if(typeof nearWater!=='undefined'&&nearWater(playerPos.x,playerPos.z)){hunger=Math.min(100,hunger+30);playerHP=Math.min(maxHP,playerHP+5);updHP();showFloat('💧 +вода +30 голод');return;}
   showFloat('❌ Немає цілі');
 }
 let holdT=null;
@@ -2112,9 +2068,8 @@ function joinRoom(id,hostNick){
 
   // If this is our own previously-created room — reopen as host
   const savedRooms=getSaved();
-  const savedProfiles=JSON.parse(localStorage.getItem('tf_profile')||'{}');
-  const isMyRoom=savedRooms.some(r=>r.id===id&&r.nick===savedProfiles.nick);
-  if(isMyRoom||id===roomId){
+  const isMyRoom=savedRooms.some(r=>r.id===id&&(r.own===true||(r.own===undefined&&r.nick===myNick)));
+  if(isMyRoom){
     reopenMyRoom(id);
     return;
   }
