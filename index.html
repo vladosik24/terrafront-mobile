@@ -777,10 +777,10 @@ function updateGhost(){
       }
     }
 
-    // Top of existing walls (for stacking)
+    // Top of existing SOLID walls only (not doors/windows — they shouldn't be stacked on)
     for(const b of placed){
-      const isWall=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window';
-      if(!isWall)continue;
+      const isSolidWall=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal';
+      if(!isSolidWall)continue;
       const bd=BDEFS[b.type];
       const dx=gx-b.x,dz=gz-b.z,d=Math.sqrt(dx*dx+dz*dz);
       if(d>bd.w+0.8)continue;
@@ -1937,7 +1937,7 @@ function gameLoop(){
     if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}else isOnGround=false;
     if(camMode===1){const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z;camera.position.set(cx,playerPos.y+CAM3P.y,cz);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));}
     else if(camMode===2){camera.position.set(playerPos.x+Math.sin(yaw)*3.2,playerPos.y+1.4,playerPos.z+Math.cos(yaw)*3.2);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));}
-    else{camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
+    else{camera.position.set(playerPos.x,playerPos.y+1.65,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
     if(myMesh){
       myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);
       myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;
@@ -2033,16 +2033,15 @@ function gameLoop(){
             targetY=(bestY!==null?bestY:gy2+3)+def2.h/2;
 
           }else if(isWall2){
-            // Collect all candidate levels, pick closest to camera
             const cands=[gy2+def2.h/2];
             for(const ob of placed){
               if(ob===b)continue;
               const isF=ob.type==='floor'||ob.type==='floor_stone'||ob.type==='platform';
-              const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||ob.type==='wall_window';
-              if(!isF&&!isW)continue;
+              const isSolidW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal';
+              if(!isF&&!isSolidW)continue;
               const od=BDEFS[ob.type];
               const dx=gx2-ob.x,dz=gz2-ob.z,d=Math.sqrt(dx*dx+dz*dz);
-              const limit=isW?od.w+0.8:6;
+              const limit=isSolidW?od.w+0.8:6;
               if(d>limit)continue;
               cands.push(ob.y+od.h/2+def2.h/2);
             }
