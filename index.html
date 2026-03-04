@@ -490,6 +490,9 @@ for(let i=0;i<30;i++){const x=(sr()-.5)*180,z=(sr()-.5)*180,h=getH(x,z),s=0.2+sr
 const plants=[],PMAT=new THREE.MeshStandardMaterial({color:0x2ecc71,roughness:1});
 for(let i=0;i<50;i++){const x=(sr()-.5)*160,z=(sr()-.5)*160,h=getH(x,z);const g=new THREE.Group();g.position.set(x,h,z);const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.6,5),PMAT);stem.position.y=0.3;g.add(stem);[-0.25,0.25].forEach(ox=>{const leaf=new THREE.Mesh(new THREE.SphereGeometry(0.18,5,4),PMAT);leaf.position.set(ox,0.55,0);g.add(leaf);});scene.add(g);plants.push({group:g,x,z,alive:true});}
 
+// ══ NEW WORLD SYSTEMS (wrapped to prevent blocking lobby on error) ══
+try{
+
 // ══ RIVERS & LAKES ══
 const waterMat=new THREE.MeshStandardMaterial({color:0x1a6fa8,roughness:0,metalness:0.3,transparent:true,opacity:0.78});
 const lakes=[];
@@ -813,6 +816,7 @@ function updateMonsters(dt,now){
 
 // ══ EXTENDED TARGETS declared above in castRay ══
 
+}catch(worldInitErr){console.error('World systems init error:',worldInitErr);}
 
 function mkChar(type){
   const cfg=CHARS[type]||CHARS.male,g=new THREE.Group();
@@ -2338,11 +2342,16 @@ function gameLoop(){
           else if(c.name==='armR'){c.rotation.x=-0.7;if(c.userData.elbow)c.userData.elbow.rotation.x=0.4;}
         });
       }
-    }    updHunger(dt*hungerMult());checkPickup();
-    updateAnimals(dt,now);updateMonsters(dt,now);updateWeather(dt);updateSeason(dt);updateFires(dt);
-    // Night fog
-    const isNight=gameTime>0.7||gameTime<0.2;
-    scene.fog.near=isNight?8:30;scene.fog.far=isNight?35:120;
+    }    updHunger(dt*(typeof hungerMult==='function'?hungerMult():1));checkPickup();
+    try{
+      if(typeof updateAnimals==='function')updateAnimals(dt,now);
+      if(typeof updateMonsters==='function')updateMonsters(dt,now);
+      if(typeof updateWeather==='function')updateWeather(dt);
+      if(typeof updateSeason==='function')updateSeason(dt);
+      if(typeof updateFires==='function')updateFires(dt);
+      const isNight=gameTime>0.7||gameTime<0.2;
+      scene.fog.near=isNight?8:30;scene.fog.far=isNight?35:120;
+    }catch(e){}
     if(!buildMode){castRay();updTgt(tAnimalTarget||tMonsterTarget||tTree);}
     else{
       if(selBldType==='__move'&&movingBld!==-1){
