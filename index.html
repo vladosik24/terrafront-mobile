@@ -288,19 +288,20 @@ function loadWorld(rid){
 function saveInv(rid){
   try{
     const data=JSON.stringify(inv);
-    // Save per-room
     if(rid)localStorage.setItem('tf_inv_'+rid,data);
-    // Also save globally by player nick (persists across all rooms)
     localStorage.setItem('tf_inv_global_'+myNick,data);
   }catch(e){}
 }
 function loadInv(rid){
   try{
-    // Try per-room first, then global fallback
-    const s=rid?localStorage.getItem('tf_inv_'+rid):null;
-    const g=localStorage.getItem('tf_inv_global_'+myNick);
-    const src=s||g;
-    if(src){const d=JSON.parse(src);Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});}
+    // Priority: per-room → global by nick
+    const perRoom=rid?localStorage.getItem('tf_inv_'+rid):null;
+    const global=localStorage.getItem('tf_inv_global_'+myNick);
+    const src=perRoom||global;
+    if(src){
+      const d=JSON.parse(src);
+      Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});
+    }
   }catch(e){}
 }
 
@@ -1064,10 +1065,11 @@ function takeDmg(d){if(isDead)return;playerHP=Math.max(0,playerHP-d);updHP();sho
 function eatFood(){if(inv.food<=0){showFloat('❌ Немає їжі');return;}inv.food--;hunger=Math.min(100,hunger+35);playerHP=Math.min(maxHP,playerHP+15);updHP();showFloat('🍖 +15 HP');renderInv();}
 function die(){
   isDead=true;
-  const dropItems=[];
-  Object.entries(inv).forEach(([k,v])=>{if(v>0){dropItems.push({k,v});inv[k]=0;}});
-  // Save empty inventory immediately so reload doesn't restore pre-death items
+  // Save inventory on death so it persists on page reload
   saveInv(roomId);
+  // Drop items on death (so others can loot, but player keeps their inv on respawn)
+  const dropItems=[];
+  Object.entries(inv).forEach(([k,v])=>{if(v>0)dropItems.push({k,v});});
   if(dropItems.length){
     const dr={x:playerPos.x+Math.random()*2-1,z:playerPos.z+Math.random()*2-1,items:dropItems,id:'drop_'+Date.now()};
     drops.push(dr);spawnDropMesh(dr);broadcast({type:'drop',drop:dr});
@@ -1076,8 +1078,7 @@ function die(){
 }
 document.getElementById('respBtn').addEventListener('click',()=>{
   playerHP=maxHP;hunger=100;
-  Object.keys(inv).forEach(k=>inv[k]=0);
-  saveInv(roomId); // save empty inv on respawn too
+  // Inventory is kept on respawn — already saved in die()
   playerPos.set(Math.random()*20-10,5,Math.random()*20-10);
   playerVelY=0;isDead=false;
   document.getElementById('death').style.display='none';
@@ -1095,7 +1096,44 @@ function updTgt(t){if(!t){tHPEl.style.display='none';return;}tHPEl.style.display
 function shake(mesh){const o=mesh.position.clone();let t=0;(function s(){t+=0.08;mesh.position.x=o.x+Math.sin(t*30)*0.08*Math.exp(-t*3);if(t<1.2)requestAnimationFrame(s);else mesh.position.copy(o);})();}
 function fellTree(t){t.alive=false;const dir=Math.random()>.5?1:-1,st=performance.now();(function fall(){const a=Math.min((performance.now()-st)/1000*1.8,Math.PI/2);t.group.rotation.z=dir*a;if(a<Math.PI/2)requestAnimationFrame(fall);else setTimeout(()=>{t.group.rotation.z=0;t.hp=t.maxHp;t.alive=true;},10000);})();inv.wood+=2+Math.floor(Math.random()*3);showFloat('🪵 +дерево');broadcast({type:'tree_fell',id:t.id,dir});}
 let lastAct=0;
-function doAction(){if(isDead)return;if(buildMode){placeBuilding();return;}const now=performance.now();if(now-lastAct<600)return;lastAct=now;if(tryInteract())return;castRay();if(tPlayer){const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});showFloat('⚔️ -'+dmg);return;}if(tTree){shake(tTree.group);tTree.hp--;if(tTree.hp<=0)fellTree(tTree);return;}if(tRock){shake(tRock.mesh);inv.stone+=1+(inv.axe>0?1:0);if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}else showFloat('🪨 +1');return;}if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);return;}showFloat('❌ Немає цілі');}
+function doAction(){
+  if(isDead)return;
+  if(buildMode){placeBuilding();return;}
+  const now=performance.now();
+  const cooldown=inv.axe>0?300:600; // axe = 2x faster
+  if(now-lastAct<cooldown)return;
+  lastAct=now;
+  if(tryInteract())return;
+  castRay();
+  if(tPlayer){
+    const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();
+    broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});
+    showFloat('⚔️ -'+dmg);return;
+  }
+  if(tTree){
+    shake(tTree.group);
+    const hits=inv.axe>0?2:1; // axe deals 2 damage per swing
+    tTree.hp-=hits;
+    showFloat(inv.axe>0?'🪓 -'+hits:'🤜 -1');
+    if(tTree.hp<=0)fellTree(tTree);
+    return;
+  }
+  if(tRock){
+    shake(tRock.mesh);
+    inv.stone+=1+(inv.axe>0?1:0);
+    if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}
+    else showFloat('🪨 +1');
+    return;
+  }
+  if(tPlant){
+    tPlant.alive=false;tPlant.group.visible=false;
+    inv.fiber+=1+Math.floor(Math.random()*2);
+    showFloat('🌿 +волокно');
+    setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);
+    return;
+  }
+  showFloat('❌ Немає цілі');
+}
 let holdT=null;
 const actBtn=document.getElementById('actBtn');
 actBtn.addEventListener('touchstart',e=>{e.preventDefault();if(buildMode){placeBuilding();return;}holdT=setTimeout(()=>{eatFood();holdT=null;},500);},{passive:false});
