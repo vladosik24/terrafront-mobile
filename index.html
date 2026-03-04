@@ -198,11 +198,8 @@ canvas{display:block;}
     <div class="bs"     data-b="campfire"    onclick="selBuild('campfire')"   ><span>🔥</span><div class="bn">Вогнище</div></div>
     <div class="bs"     data-b="bed"         onclick="selBuild('bed')"        ><span>🛏️</span><div class="bn">Ліжко</div></div>
     <div class="bs"     data-b="chest"       onclick="selBuild('chest')"      ><span>📦</span><div class="bn">Скриня</div></div>
-    <div class="bs"     data-b="furnace"     onclick="selBuild('furnace')"    ><span>🏭</span><div class="bn">Піч</div></div>
-    <div class="bs"     data-b="farm"        onclick="selBuild('farm')"       ><span>🌾</span><div class="bn">Ферма</div></div>
-    <div class="bs"     data-b="bookshelf"   onclick="selBuild('bookshelf')"  ><span>📚</span><div class="bn">Бібліот.</div></div>
     <div class="bs"     data-b="table"       onclick="selBuild('table')"      ><span>🪑</span><div class="bn">Стіл</div></div>
-    <div class="bs"     data-b="shelf"       onclick="selBuild('shelf')"      ><span>🗄️</span><div class="bn">Полиця</div></div>
+    <div class="bs"     data-b="shelf"       onclick="selBuild('shelf')"      ><span>📚</span><div class="bn">Полиця</div></div>
     <div class="bs"     data-b="chair"       onclick="selBuild('chair')"      ><span>🛋️</span><div class="bn">Крісло</div></div>
     <div class="bs"     data-b="wardrobe"    onclick="selBuild('wardrobe')"   ><span>🚪</span><div class="bn">Шафа</div></div>
     <div class="bs"     data-b="desk"        onclick="selBuild('desk')"       ><span>🖥️</span><div class="bn">Письм.стіл</div></div>
@@ -253,52 +250,13 @@ canvas{display:block;}
       <button class="lbCancel" onclick="closeLockPop()">✕ Скасувати</button>
     </div>
   </div>
-  <!-- CHEST POPUP -->
-  <div id="chestPop" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
-    <div style="background:#1a1a2e;border:1px solid #ffe082;border-radius:14px;padding:16px;min-width:280px;max-width:340px;width:90%;display:flex;flex-direction:column;gap:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="color:#ffe082;font-weight:bold;font-size:13px;">📦 Скриня</span>
-        <button onclick="closeChest()" style="background:#c62828;border:none;border-radius:6px;color:#fff;padding:2px 10px;cursor:pointer;font-size:13px;">✕</button>
-      </div>
-      <div id="chestGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;min-height:48px;"></div>
-      <div style="display:flex;gap:6px;">
-        <button onclick="chestDeposit()" style="flex:1;background:#388e3c;border:none;border-radius:6px;color:#fff;padding:7px;font-size:11px;cursor:pointer;">⬇️ Покласти все</button>
-        <button onclick="chestWithdraw()" style="flex:1;background:#1976d2;border:none;border-radius:6px;color:#fff;padding:7px;font-size:11px;cursor:pointer;">⬆️ Забрати все</button>
-      </div>
-    </div>
-  </div>
-  <!-- FURNACE POPUP -->
-  <div id="furnacePop" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
-    <div style="background:#1a1208;border:1px solid #ff6f00;border-radius:14px;padding:16px;min-width:260px;width:90%;display:flex;flex-direction:column;gap:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="color:#ff6f00;font-weight:bold;font-size:13px;">🏭 Піч — Плавка</span>
-        <button onclick="closeFurnace()" style="background:#c62828;border:none;border-radius:6px;color:#fff;padding:2px 10px;cursor:pointer;font-size:13px;">✕</button>
-      </div>
-      <div id="furnaceStatus" style="font-size:10px;color:#aaa;text-align:center;min-height:14px;"></div>
-      <button onclick="furnaceSmelt('stone','metal',3,1,2)" style="background:#455a64;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🪨 Камінь×3 + 🖤 Вугілля×1 → ⚙️ Метал×2</button>
-      <button onclick="furnaceSmelt('wood','coal',2,0,3)"   style="background:#4e342e;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🪵 Дерево×2 → 🖤 Вугілля×3</button>
-      <button onclick="furnaceSmelt('meat','food',1,1,2)"   style="background:#6d4c41;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🥩 Мясо×1 + 🖤 Вугілля×1 → 🍖 Їжа×2</button>
-      <button onclick="furnaceSmelt('fiber','fiber',4,1,6)"  style="background:#4a148c;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🌿 Волокно×4 + 🖤 Вугілля×1 → 🌿 Волокно×6 (очищено)</button>
-    </div>
-  </div>
-  <!-- FARM POPUP -->
-  <div id="farmPop" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
-    <div style="background:#0a1a0a;border:1px solid #81c784;border-radius:14px;padding:16px;min-width:240px;width:90%;display:flex;flex-direction:column;gap:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="color:#81c784;font-weight:bold;font-size:13px;">🌾 Ферма</span>
-        <button onclick="closeFarm()" style="background:#c62828;border:none;border-radius:6px;color:#fff;padding:2px 10px;cursor:pointer;font-size:13px;">✕</button>
-      </div>
-      <div id="farmStatus" style="font-size:11px;color:#aaa;text-align:center;min-height:16px;"></div>
-      <button onclick="farmPlant('wheat')"  style="background:#558b2f;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;">🌱 Посіяти пшеницю (fiber×1) → 🍖 їжа×3</button>
-      <button onclick="farmPlant('veggie')" style="background:#1b5e20;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;">🥕 Посіяти овочі (fiber×2) → 🍖 їжа×5 + fiber×2</button>
-      <button onclick="farmHarvest()" id="farmHarvestBtn" style="background:#f57f17;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;">🌾 Зібрати врожай</button>
-    </div>
-  </div>
+</div>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 // ══ SAVED ROOMS ══
 function getSaved(){try{return JSON.parse(localStorage.getItem('tf_rooms')||'[]');}catch(e){return[];}}
-function saveRoom(id,nick,isOwn=false){const r=getSaved().filter(x=>x.id!==id);r.unshift({id,nick,ts:Date.now(),own:isOwn});localStorage.setItem('tf_rooms',JSON.stringify(r.slice(0,10)));}
+function saveRoom(id,nick){const r=getSaved().filter(x=>x.id!==id);r.unshift({id,nick,ts:Date.now()});localStorage.setItem('tf_rooms',JSON.stringify(r.slice(0,10)));}
 function delSaved(id){localStorage.setItem('tf_rooms',JSON.stringify(getSaved().filter(r=>r.id!==id)));}
 function renderSaved(){
   const rooms=getSaved(),sec=document.getElementById("savedSec"),list=document.getElementById("savedList");
@@ -308,9 +266,8 @@ function renderSaved(){
     const d=document.createElement("div");d.className="sr";
     const ago=Math.floor((Date.now()-r.ts)/60000);
     const agoStr=ago<60?ago+"хв":Math.floor(ago/60)+"год";
-    const isOwn=!!r.own;
-    d.innerHTML="<div class='sri'><div class='srn'>"+(isOwn?'🏠':'🌲')+" "+r.nick+"'s кімната</div><div class='srid'>ID: "+r.id+" &middot; "+agoStr+" тому</div></div><button class='del'>🗑️</button>";
-    d.querySelector(".sri").onclick=()=>isOwn?reopenMyRoom(r.id):joinRoom(r.id,r.nick);
+    d.innerHTML="<div class='sri'><div class='srn'>🌲 "+r.nick+"'s кімната</div><div class='srid'>ID: "+r.id+" &middot; "+agoStr+" тому</div></div><button class='del'>🗑️</button>";
+    d.querySelector(".sri").onclick=()=>joinRoom(r.id,r.nick);
     d.querySelector(".del").onclick=e=>{e.stopPropagation();delSaved(r.id);renderSaved();};
     list.appendChild(d);
   });
@@ -327,28 +284,8 @@ function loadWorld(rid){
   try{const s=localStorage.getItem('tf_world_'+rid);if(s){const d=JSON.parse(s);if(d&&d.buildings&&d.buildings.length)return d;}}catch(e){}
   return null;
 }
-function saveInv(rid){
-  try{
-    const data=JSON.stringify(inv);
-    if(rid)localStorage.setItem('tf_inv_'+rid,data);
-    // Always save to global key (no nick dependency)
-    localStorage.setItem('tf_inv_global',data);
-    if(myNick)localStorage.setItem('tf_inv_global_'+myNick,data);
-  }catch(e){}
-}
-function loadInv(rid){
-  try{
-    // Priority: per-room → global (no nick) → global by nick
-    const perRoom=rid?localStorage.getItem('tf_inv_'+rid):null;
-    const global=localStorage.getItem('tf_inv_global');
-    const byNick=myNick?localStorage.getItem('tf_inv_global_'+myNick):null;
-    const src=perRoom||byNick||global;
-    if(src){
-      const d=JSON.parse(src);
-      Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});
-    }
-  }catch(e){}
-}
+function saveInv(rid){try{localStorage.setItem('tf_inv_'+rid,JSON.stringify(inv));}catch(e){}}
+function loadInv(rid){try{const s=localStorage.getItem('tf_inv_'+rid);if(s){const d=JSON.parse(s);Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});}}catch(e){}}
 
 // ══ CHARS ══
 let myChar='male';
@@ -400,26 +337,36 @@ async function fetchRooms(){
   return {...cache,..._local};
 }
 
-async function announceRoom(rid,nick,count,offline=false,peerId=''){
+async function announceRoom(rid,nick,count,offline=false){
   const now=Date.now();
-  const entry={nick,count,char:myChar,ts:now,offline,peerId:peerId||myId||''};
+  const entry={nick,count,char:myChar,ts:now,offline};
   _local[rid]=entry;
   if(BC)BC.postMessage({type:'ru',id:rid,entry});
+
+  // Save locally first (instant feedback)
   try{
     const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
     cache[rid]=entry;
-    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>2*3600*1000)delete cache[k];});
+    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>7*86400000)delete cache[k];});
     localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
+
+  // Push to jsonbin (cross-device)
   try{
+    // First read current data, merge, then write back
     let current={};
     try{
       const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
       if(r.ok){const d=await r.json();current=(d&&(d.rooms||d))||{};}
     }catch(e){}
     current[rid]=entry;
-    Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>2*3600*1000)delete current[k];});
-    await apiFetch(BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(current)});
+    // Remove very old entries
+    Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>7*86400000)delete current[k];});
+    await apiFetch(BIN,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
+      body:JSON.stringify(current)
+    });
   }catch(e){console.log('jsonbin write failed:',e.message||e);}
 }
 
@@ -479,397 +426,18 @@ for(let i=0;i<30;i++){const x=(sr()-.5)*180,z=(sr()-.5)*180,h=getH(x,z),s=0.2+sr
 const plants=[],PMAT=new THREE.MeshStandardMaterial({color:0x2ecc71,roughness:1});
 for(let i=0;i<50;i++){const x=(sr()-.5)*160,z=(sr()-.5)*160,h=getH(x,z);const g=new THREE.Group();g.position.set(x,h,z);const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.6,5),PMAT);stem.position.y=0.3;g.add(stem);[-0.25,0.25].forEach(ox=>{const leaf=new THREE.Mesh(new THREE.SphereGeometry(0.18,5,4),PMAT);leaf.position.set(ox,0.55,0);g.add(leaf);});scene.add(g);plants.push({group:g,x,z,alive:true});}
 
-// ══ NEW WORLD SYSTEMS (wrapped to prevent blocking lobby on error) ══
-try{
-
-// ══ RIVERS & LAKES ══
-const waterMat=new THREE.MeshStandardMaterial({color:0x1a6fa8,roughness:0,metalness:0.3,transparent:true,opacity:0.78});
-const lakes=[];
-// 3 lakes
-[[-30,-20],[25,40],[-50,30]].forEach(([lx,lz])=>{
-  const r=8+sr()*6;
-  const geo=new THREE.CylinderGeometry(r,r,0.4,16);
-  const m=new THREE.Mesh(geo,waterMat);
-  const h=getH(lx,lz);
-  m.position.set(lx,h-0.15,lz);
-  scene.add(m);
-  lakes.push({x:lx,z:lz,r,y:h-0.15});
-});
-// 2 rivers (stretched flat boxes)
-[{x:-10,z:0,len:60,angle:0.3},{x:20,z:-30,len:50,angle:-0.7}].forEach(r=>{
-  const rg=new THREE.BoxGeometry(3,0.3,r.len);
-  const rm=new THREE.Mesh(rg,waterMat);
-  const h=getH(r.x,r.z);
-  rm.position.set(r.x,h-0.1,r.z);
-  rm.rotation.y=r.angle;
-  scene.add(rm);
-  lakes.push({x:r.x,z:r.z,r:4,y:h-0.1,isRiver:true});
-});
-function nearWater(x,z,dist=3){return lakes.some(l=>Math.sqrt((x-l.x)**2+(z-l.z)**2)<l.r+dist);}
-
-// ══ CAVES ══
-const caves=[];
-[[-60,20],[40,-50],[10,70],[-30,-60]].forEach(([cx,cz])=>{
-  const h=getH(cx,cz);
-  // Cave entrance — dark tunnel opening
-  const ent=new THREE.Group();
-  const rock1=new THREE.Mesh(new THREE.DodecahedronGeometry(2.5,0),RMAT);rock1.position.set(-1.5,1,0);ent.add(rock1);
-  const rock2=new THREE.Mesh(new THREE.DodecahedronGeometry(2,0),RMAT);rock2.position.set(1.2,1.2,0);ent.add(rock2);
-  const dark=new THREE.Mesh(new THREE.CircleGeometry(1.5,8),new THREE.MeshStandardMaterial({color:0x050505}));dark.rotation.y=Math.PI;dark.position.set(0,1,0.1);ent.add(dark);
-  ent.position.set(cx,h,cz);scene.add(ent);
-  caves.push({x:cx,z:cz,y:h,mesh:ent,looted:false});
-});
-
-// ══ RUINS ══
-const ruins=[];
-[[50,50],[-40,60],[60,-40]].forEach(([rx,rz])=>{
-  const h=getH(rx,rz);
-  const g=new THREE.Group();
-  const rMat=new THREE.MeshStandardMaterial({color:0x6a6060,roughness:1});
-  // Broken walls
-  [[0,0,0],[3,0,0],[0,0,3]].forEach(([wx,wy,wz])=>{
-    const wh=1+sr()*2;
-    const w=new THREE.Mesh(new THREE.BoxGeometry(0.5,wh,3),rMat);
-    w.position.set(wx,wy+wh/2,wz);w.rotation.y=sr()*0.3;g.add(w);
-  });
-  // Rubble
-  for(let i=0;i<6;i++){
-    const rb=new THREE.Mesh(new THREE.DodecahedronGeometry(0.2+sr()*0.3,0),rMat);
-    rb.position.set((sr()-.5)*5,h+0.2,(sr()-.5)*5);rb.rotation.set(sr()*6,sr()*6,sr()*6);g.add(rb);
-  }
-  // Loot chest
-  const chest=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.4,0.5),new THREE.MeshStandardMaterial({color:0x8B6914,roughness:0.7}));
-  chest.position.set(1,h+0.2,1);g.add(chest);
-  g.position.set(rx,0,rz);scene.add(g);
-  ruins.push({x:rx,z:rz,y:h,mesh:g,looted:false});
-});
-
-// ══ MUSHROOMS ══
-const mushrooms=[];
-const MUSH_TYPES=[{cap:0xcc2200,poison:true},{cap:0xffaa00,poison:false},{cap:0xffffff,poison:false}];
-for(let i=0;i<40;i++){
-  const x=(sr()-.5)*160,z=(sr()-.5)*160,h=getH(x,z);
-  if(h<-1||h>6)continue;
-  const mt=MUSH_TYPES[Math.floor(sr()*MUSH_TYPES.length)];
-  const g=new THREE.Group();
-  const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,0.3,6),new THREE.MeshStandardMaterial({color:0xeeeecc,roughness:1}));
-  stem.position.y=0.15;g.add(stem);
-  const cap=new THREE.Mesh(new THREE.SphereGeometry(0.18,7,5,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:mt.cap,roughness:0.9}));
-  cap.position.y=0.32;g.add(cap);
-  g.position.set(x,h,z);scene.add(g);
-  mushrooms.push({group:g,x,z,alive:true,poison:mt.poison});
-}
-
-// ══ BERRY BUSHES ══
-const berries=[];
-for(let i=0;i<30;i++){
-  const x=(sr()-.5)*160,z=(sr()-.5)*160,h=getH(x,z);
-  if(h<-1||h>6)continue;
-  const g=new THREE.Group();
-  const bush=new THREE.Mesh(new THREE.SphereGeometry(0.4,6,5),new THREE.MeshStandardMaterial({color:0x2d6a1f,roughness:1}));
-  g.add(bush);
-  for(let j=0;j<5;j++){
-    const b=new THREE.Mesh(new THREE.SphereGeometry(0.06,5,4),new THREE.MeshStandardMaterial({color:0xcc1111,roughness:0.8}));
-    b.position.set((sr()-.5)*0.6,(sr()-.5)*0.4,(sr()-.5)*0.6);g.add(b);
-  }
-  g.position.set(x,h,z);scene.add(g);
-  berries.push({group:g,x,z,alive:true,regrowAt:0});
-}
-
-// ══ ANIMALS ══
-const animals=[];
-function mkAnimal(type,x,z){
-  const h=getH(x,z);
-  const g=new THREE.Group();
-  if(type==='boar'){
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.55,0.5),new THREE.MeshStandardMaterial({color:0x6b4c2a,roughness:1}));g.add(body);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.32,0.38),new THREE.MeshStandardMaterial({color:0x6b4c2a,roughness:1}));head.position.set(0.6,0.1,0);g.add(head);
-    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.16,0.22),new THREE.MeshStandardMaterial({color:0x8a6040,roughness:1}));snout.position.set(0.78,0.04,0);g.add(snout);
-    [-0.35,0.35].forEach(oz=>[-0.45,0.2].forEach(ox=>{const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.06,0.38,5),new THREE.MeshStandardMaterial({color:0x5a3c1e,roughness:1}));leg.position.set(ox,-0.45,oz);g.add(leg);}));
-  }else if(type==='deer'){
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.5,0.4),new THREE.MeshStandardMaterial({color:0xb8763c,roughness:1}));g.add(body);
-    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.5,6),new THREE.MeshStandardMaterial({color:0xb8763c,roughness:1}));neck.position.set(0.45,0.35,0);neck.rotation.z=-0.4;g.add(neck);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.24,0.24),new THREE.MeshStandardMaterial({color:0xb8763c,roughness:1}));head.position.set(0.65,0.6,0);g.add(head);
-    [-0.3,0.3].forEach(oz=>[-0.4,0.25].forEach(ox=>{const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.04,0.55,5),new THREE.MeshStandardMaterial({color:0x9a5e28,roughness:1}));leg.position.set(ox,-0.52,oz);g.add(leg);}));
-  }else if(type==='chicken'){
-    const body=new THREE.Mesh(new THREE.SphereGeometry(0.22,6,5),new THREE.MeshStandardMaterial({color:0xeeeeee,roughness:1}));g.add(body);
-    const head=new THREE.Mesh(new THREE.SphereGeometry(0.12,6,5),new THREE.MeshStandardMaterial({color:0xeeeeee,roughness:1}));head.position.set(0.28,0.18,0);g.add(head);
-    const beak=new THREE.Mesh(new THREE.ConeGeometry(0.04,0.1,4),new THREE.MeshStandardMaterial({color:0xffaa00}));beak.position.set(0.4,0.16,0);beak.rotation.z=-Math.PI/2;g.add(beak);
-    const comb=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.1,0.08),new THREE.MeshStandardMaterial({color:0xcc0000}));comb.position.set(0.26,0.28,0);g.add(comb);
-  }
-  g.position.set(x,h,z);
-  g.castShadow=true;
-  scene.add(g);
-  const maxHP=type==='boar'?40:type==='deer'?30:15;
-  animals.push({group:g,type,x,z,y:h,hp:maxHP,maxHp:maxHP,alive:true,
-    vx:(sr()-.5)*0.02,vz:(sr()-.5)*0.02,
-    moveTimer:0,fleeTimer:0,legPh:0,id:animals.length});
-}
-for(let i=0;i<8;i++)mkAnimal('boar',(sr()-.5)*150,(sr()-.5)*150);
-for(let i=0;i<10;i++)mkAnimal('deer',(sr()-.5)*150,(sr()-.5)*150);
-for(let i=0;i<12;i++)mkAnimal('chicken',(sr()-.5)*150,(sr()-.5)*150);
-
-// ══ MONSTERS ══
-const monsters=[];
-function mkMonster(type,x,z){
-  const h=getH(x,z);
-  const g=new THREE.Group();
-  if(type==='zombie'){
-    const body=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.7,0.3),new THREE.MeshStandardMaterial({color:0x4a7a3a,roughness:1}));g.add(body);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.36,0.32),new THREE.MeshStandardMaterial({color:0x5a8a48,roughness:1}));head.position.y=0.55;g.add(head);
-    const eL=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6),new THREE.MeshStandardMaterial({color:0xff3300,emissive:0xff2200,emissiveIntensity:1}));eL.position.set(-0.08,0.57,0.16);g.add(eL);
-    const eR=eL.clone();eR.position.x=0.08;g.add(eR);
-    [-0.18,0.18].forEach(ox=>{const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.06,0.5,5),new THREE.MeshStandardMaterial({color:0x4a7a3a,roughness:1}));arm.position.set(ox,0.1,0);arm.rotation.z=ox<0?0.6:-0.6;g.add(arm);});
-    [-0.12,0.12].forEach(ox=>{const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.07,0.5,5),new THREE.MeshStandardMaterial({color:0x3a5a2a,roughness:1}));leg.position.set(ox,-0.6,0);g.add(leg);});
-  }else if(type==='wolf'){
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.45,0.4),new THREE.MeshStandardMaterial({color:0x555566,roughness:1}));g.add(body);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.28,0.32),new THREE.MeshStandardMaterial({color:0x555566,roughness:1}));head.position.set(0.55,0.1,0);g.add(head);
-    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.16,0.22),new THREE.MeshStandardMaterial({color:0x666677,roughness:1}));snout.position.set(0.72,0.02,0);g.add(snout);
-    const eL2=new THREE.Mesh(new THREE.SphereGeometry(0.04,5,5),new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xaaaa00,emissiveIntensity:1}));eL2.position.set(0.54,0.16,0.12);g.add(eL2);const eR2=eL2.clone();eR2.position.z=-0.12;g.add(eR2);
-    [-0.3,0.3].forEach(oz=>[-0.38,0.22].forEach(ox=>{const l=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.38,5),new THREE.MeshStandardMaterial({color:0x444455,roughness:1}));l.position.set(ox,-0.4,oz);g.add(l);}));
-    const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.02,0.5,5),new THREE.MeshStandardMaterial({color:0x555566,roughness:1}));tail.position.set(-0.6,0.15,0);tail.rotation.z=0.6;g.add(tail);
-  }
-  g.position.set(x,h,z);g.castShadow=true;scene.add(g);
-  const maxHP=type==='zombie'?50:35;
-  monsters.push({group:g,type,x,z,y:h,hp:maxHP,maxHp:maxHP,alive:false,legPh:0,id:monsters.length});
-}
-for(let i=0;i<12;i++)mkMonster('zombie',(sr()-.5)*180,(sr()-.5)*180);
-for(let i=0;i<8;i++)mkMonster('wolf',(sr()-.5)*180,(sr()-.5)*180);
-// Hide monsters during day
-monsters.forEach(m=>m.group.visible=false);
-
-// ══ WEATHER ══
-let weatherType='clear',weatherTimer=0,rainParticles=null,rainActive=false;
-function startRain(){
-  if(rainActive)return;rainActive=true;
-  const geo=new THREE.BufferGeometry();
-  const pos=new Float32Array(2000*3);
-  for(let i=0;i<2000;i++){pos[i*3]=(Math.random()-.5)*120;pos[i*3+1]=Math.random()*30+5;pos[i*3+2]=(Math.random()-.5)*120;}
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  rainParticles=new THREE.Points(geo,new THREE.PointsMaterial({color:0x8888ff,size:0.12,transparent:true,opacity:0.5}));
-  scene.add(rainParticles);
-}
-function stopRain(){
-  if(!rainActive)return;rainActive=false;
-  if(rainParticles){scene.remove(rainParticles);rainParticles=null;}
-}
-function updateWeather(dt){
-  weatherTimer-=dt;
-  if(weatherTimer<=0){
-    const r=Math.random();
-    if(r<0.4){weatherType='clear';stopRain();weatherTimer=120+Math.random()*180;}
-    else if(r<0.75){weatherType='rain';startRain();weatherTimer=60+Math.random()*90;}
-    else{weatherType='storm';startRain();weatherTimer=30+Math.random()*60;}
-  }
-  if(rainActive&&rainParticles){
-    const pos=rainParticles.geometry.attributes.position;
-    for(let i=0;i<pos.count;i++){
-      pos.setY(i,pos.getY(i)-8*dt);
-      if(pos.getY(i)<0)pos.setY(i,30+Math.random()*10);
-      pos.setX(i,pos.getX(i)+playerPos.x*0.01);
-    }
-    pos.needsUpdate=true;
-    // Rain extinguishes campfires
-    if(weatherType==='storm'&&Math.random()<0.01){
-      placed.forEach(b=>{if(b.type==='campfire'&&Math.random()<0.3)showFloat('🌧️ Вогнище погасло від дощу!');});
-    }
-  }
-}
-
-// ══ SEASONS ══
-let season='summer',seasonTimer=300,seasonIdx=0;
-const SEASONS=['spring','summer','autumn','winter'];
-const SEASON_UA={spring:'🌸 Весна',summer:'☀️ Літо',autumn:'🍂 Осінь',winter:'❄️ Зима'};
-const SEASON_TREE_COLORS={spring:0x55cc44,summer:0x228822,autumn:0xcc6611,winter:0xdddddd};
-function updateSeason(dt){
-  seasonTimer-=dt;
-  if(seasonTimer<=0){
-    seasonIdx=(seasonIdx+1)%4;
-    season=SEASONS[seasonIdx];
-    seasonTimer=300;
-    // Update tree colors
-    const col=SEASON_TREE_COLORS[season];
-    trees.forEach(t=>t.group.children.forEach(c=>{if(c.geometry&&c.geometry.type==='ConeGeometry')c.material.color.setHex(col);}));
-    // Winter — less food, more hunger
-    showFloat(SEASON_UA[season]+' настала!');
-    addChat('🌍',SEASON_UA[season]+' настала!');
-  }
-}
-const hungerMult=()=>season==='winter'?1.8:season==='summer'?1.0:1.2;
-
-// ══ FIRE SPREAD ══
-const fires=[];
-function startFire(x,z,y){
-  if(fires.some(f=>Math.sqrt((f.x-x)**2+(f.z-z)**2)<3))return;
-  const g=new THREE.Group();
-  const fl=new THREE.Mesh(new THREE.ConeGeometry(0.4,1.2,6),new THREE.MeshStandardMaterial({color:0xff5500,emissive:0xff3300,emissiveIntensity:2,transparent:true,opacity:0.85}));
-  fl.position.y=0.6;g.add(fl);
-  const pl=new THREE.PointLight(0xff6600,1.5,6);pl.position.y=0.8;g.add(pl);
-  g.position.set(x,y,z);scene.add(g);
-  fires.push({group:g,x,z,y,life:30+Math.random()*20,light:pl,mesh:fl});
-}
-function updateFires(dt){
-  for(let i=fires.length-1;i>=0;i--){
-    const f=fires[i];
-    f.life-=dt;
-    f.mesh.material.opacity=Math.min(0.85,f.life/5);
-    // Spread to nearby trees
-    if(Math.random()<0.005){
-      trees.forEach(t=>{if(t.alive&&Math.sqrt((t.x-f.x)**2+(t.z-f.z)**2)<5){t.hp-=1;if(t.hp<=0)fellTree(t);}});
-    }
-    // Spread to adjacent cells
-    if(f.life>10&&Math.random()<0.003)startFire(f.x+(Math.random()-.5)*4,f.z+(Math.random()-.5)*4,f.y);
-    if(f.life<=0){scene.remove(f.group);fires.splice(i,1);}
-    // Rain extinguishes fires
-    if(rainActive&&Math.random()<0.05){scene.remove(f.group);fires.splice(i,1);}
-  }
-}
-
-// ══ ANIMAL AI ══
-let tAnimal=null;
-function updateAnimals(dt,now){
-  const isNight=gameTime>0.7||gameTime<0.2;
-  animals.forEach(a=>{
-    if(!a.alive)return;
-    a.legPh+=dt*4;
-    a.moveTimer-=dt;
-    a.fleeTimer-=dt;
-    const dx=playerPos.x-a.x,dz=playerPos.z-a.z;
-    const dist=Math.sqrt(dx*dx+dz*dz);
-    // Flee from player
-    if(dist<8&&a.fleeTimer<=0){
-      const ang=Math.atan2(dz,dx)+Math.PI;
-      a.vx=Math.cos(ang)*0.04;a.vz=Math.sin(ang)*0.04;
-      a.fleeTimer=3;
-    }
-    // Random wander
-    if(a.moveTimer<=0){
-      const ang=Math.random()*Math.PI*2;
-      const spd=a.type==='chicken'?0.01:0.02;
-      a.vx=Math.cos(ang)*spd;a.vz=Math.sin(ang)*spd;
-      a.moveTimer=2+Math.random()*4;
-    }
-    a.x+=a.vx;a.z+=a.vz;
-    // Clamp to world
-    a.x=Math.max(-90,Math.min(90,a.x));a.z=Math.max(-90,Math.min(90,a.z));
-    a.y=getH(a.x,a.z);
-    a.group.position.set(a.x,a.y,a.z);
-    a.group.rotation.y=Math.atan2(a.vx,a.vz);
-    // Leg animation
-    const sw=Math.sin(a.legPh)*0.4;
-    a.group.children.forEach((c,i)=>{if(i>2)c.rotation.x=i%2===0?sw:-sw;});
-  });
-}
-
-// ══ MONSTER AI ══
-let nightWarned=false;
-function updateMonsters(dt,now){
-  const isNight=gameTime>0.7||gameTime<0.2;
-  // Show/hide based on day/night
-  if(isNight&&!nightWarned){nightWarned=true;showFloat('🌙 Обережно! Монстри вийшли вночі!');addChat('☠️','Монстри прокинулись вночі!');}
-  if(!isNight&&nightWarned){nightWarned=false;}
-  monsters.forEach(m=>{
-    m.group.visible=isNight||m.alive&&m.hp<m.maxHp;
-    if(!isNight){m.alive=false;return;}
-    m.alive=true;
-    if(m.hp<=0){m.alive=false;m.group.visible=false;
-      // Drop loot
-      if(!m.looted){m.looted=true;inv.meat+=1;inv.fiber+=1;renderInv();showFloat('☠️ +м\'ясо +волокно');}
-      // Respawn at next night
-      setTimeout(()=>{m.hp=m.maxHp;m.looted=false;m.alive=true;m.group.position.set(m.x,m.y,m.z);},60000);
-      return;
-    }
-    m.legPh+=dt*5;
-    const dx=playerPos.x-m.x,dz=playerPos.z-m.z;
-    const dist=Math.sqrt(dx*dx+dz*dz);
-    // Chase player
-    if(dist<25){
-      const spd=m.type==='wolf'?0.05:0.03;
-      const ang=Math.atan2(dz,dx);
-      m.x+=Math.cos(ang)*spd;m.z+=Math.sin(ang)*spd;
-      m.group.rotation.y=-ang+Math.PI/2;
-    }
-    m.y=getH(m.x,m.z);
-    m.group.position.set(m.x,m.y,m.z);
-    // Attack player
-    if(dist<1.8&&now-m._lastAtk>2000){
-      m._lastAtk=now;
-      const dmg=m.type==='wolf'?12:8;
-      takeDmg(dmg);showFloat('☠️ '+(m.type==='wolf'?'Вовк':'Зомбі')+' -'+dmg+'HP');
-    }
-    // Leg anim
-    const sw=Math.sin(m.legPh)*0.4;
-    m.group.children.forEach((c,i)=>{if(i>3)c.rotation.x=i%2===0?sw:-sw;});
-  });
-}
-
-// ══ EXTENDED TARGETS declared above in castRay ══
-
-}catch(worldInitErr){console.error('World systems init error:',worldInitErr);}
-
+function mat(color,rough=0.8,metal=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});}
 function mkChar(type){
   const cfg=CHARS[type]||CHARS.male,g=new THREE.Group();
   const bM=mat(cfg.bodyColor,0.8),pM=mat(cfg.pantsColor,0.9),sM=mat(cfg.skinColor,0.9),hM=mat(cfg.hairColor,0.95),shM=mat(cfg.shoeColor,0.85),beM=mat(cfg.beltColor,0.7);
-
-  // ── Legs with hip pivots ──
-  function mkLeg(side){
-    const hip=new THREE.Group(); // pivot at hip
-    hip.position.set(side*0.14,-0.34,0);
-    // Upper leg
-    const uLeg=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.42,7),pM);
-    uLeg.position.set(0,-0.21,0); // offset down from pivot
-    hip.add(uLeg);
-    // Knee pivot
-    const knee=new THREE.Group();
-    knee.position.set(0,-0.42,0);
-    // Lower leg
-    const lLeg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.08,0.38,7),pM);
-    lLeg.position.set(0,-0.19,0);
-    knee.add(lLeg);
-    // Shoe
-    const sh=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.1,0.32),shM);
-    sh.position.set(0,-0.4,0.06);
-    knee.add(sh);
-    hip.add(knee);
-    hip.userData.knee=knee;
-    hip.name=side<0?'legL':'legR';
-    return hip;
-  }
-  const legL=mkLeg(-1),legR=mkLeg(1);
-  g.add(legL);g.add(legR);
-
-  // ── Torso ──
+  const legL=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.72,7),pM);legL.position.set(-0.14,-0.56,0);legL.name='legL';g.add(legL);
+  const legR=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.72,7),pM);legR.position.set(0.14,-0.56,0);legR.name='legR';g.add(legR);
+  [-0.14,0.14].forEach((ox,i)=>{const sh=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.34),shM);sh.position.set(ox,-0.97,0.06);sh.name=i===0?'shoeL':'shoeR';g.add(sh);});
   const torso=new THREE.Mesh(new THREE.BoxGeometry(0.56,0.68,0.3),bM);torso.position.y=0.02;g.add(torso);
   const belt=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.08,0.33),beM);belt.position.y=-0.3;g.add(belt);
-
-  // ── Arms with shoulder pivots ──
-  function mkArm(side){
-    const shoulder=new THREE.Group(); // pivot at shoulder
-    shoulder.position.set(side*0.38,0.3,0);
-    shoulder.rotation.z=side*0.18; // natural resting angle
-    // Upper arm
-    const uArm=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.32,6),bM);
-    uArm.position.set(0,-0.16,0);
-    shoulder.add(uArm);
-    // Elbow pivot
-    const elbow=new THREE.Group();
-    elbow.position.set(0,-0.32,0);
-    const lArm=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.07,0.28,6),sM);
-    lArm.position.set(0,-0.14,0);
-    elbow.add(lArm);
-    // Fist
-    const fist=new THREE.Mesh(new THREE.SphereGeometry(0.075,7,7),sM);
-    fist.position.set(0,-0.3,0);
-    elbow.add(fist);
-    shoulder.add(elbow);
-    shoulder.userData.elbow=elbow;
-    shoulder.name=side<0?'armL':'armR';
-    return shoulder;
-  }
-  const armL=mkArm(-1),armR=mkArm(1);
-  g.add(armL);g.add(armR);
-
-  // ── Head & neck ──
+  const armL=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.38,6),bM);armL.position.set(-0.4,0.1,0);armL.rotation.z=-0.25;armL.name='armL';g.add(armL);
+  const armR=new THREE.Mesh(new THREE.CylinderGeometry(0.085,0.08,0.38,6),bM);armR.position.set(0.4,0.1,0);armR.rotation.z=0.25;armR.name='armR';g.add(armR);
+  [-0.4,0.4].forEach(ox=>{const fi=new THREE.Mesh(new THREE.SphereGeometry(0.09,7,7),sM);fi.position.set(ox*1.12,-0.27,0);g.add(fi);});
   const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.14,7),sM);neck.position.y=0.41;g.add(neck);
   const head=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.42,0.38),sM);head.position.y=0.64;g.add(head);
   const eG=new THREE.SphereGeometry(0.05,8,8),eM2=mat(0x1a1a2e,1);
@@ -942,27 +510,24 @@ const BDEFS={
   wall_door:  {cost:{wood:5,stone:2},   w:3,h:3,d:0.3,snap:true,isDoor:true},
   wall_window:{cost:{wood:2,stone:2},   w:3,h:3,d:0.3,snap:true,isWindow:true},
   roof:       {cost:{wood:6,stone:1},   w:3,h:0.4,d:3,snap:true},
-  stairs:     {cost:{wood:4,stone:1},   w:1.5,h:3.5,d:3.5,isStairs:true},
+  stairs:     {cost:{wood:4,stone:1},   w:1.5,h:2,d:3,isStairs:true},
   platform:   {cost:{wood:6},           w:6,h:0.3,d:1.5,snap:true},
   tower:      {cost:{wood:6,stone:8},   w:2,h:6,d:2},
   fence:      {cost:{wood:2},           w:2,h:1,d:0.15},
   scaffold:   {cost:{wood:8},           w:2,h:4,d:0.4},
   campfire:   {cost:{wood:3},           w:1,h:0.6,d:1,interact:true,noCollide:true},
   bed:        {cost:{wood:6,fiber:4},   w:1,h:0.8,d:2,interact:true},
-  chest:      {cost:{wood:6,metal:2},   w:1,h:0.8,d:0.7,interact:true},
-  furnace:    {cost:{stone:8,metal:2},  w:1,h:1.2,d:1,interact:true},
-  farm:       {cost:{wood:4,fiber:2},   w:2,h:0.2,d:2,interact:true,noCollide:true},
+  chest:      {cost:{wood:4,metal:2},   w:0.8,h:0.6,d:0.6},
   table:      {cost:{wood:4},           w:1.2,h:0.8,d:0.8},
   shelf:      {cost:{wood:3},           w:1.4,h:1.2,d:0.25,noCollide:true},
-  bookshelf:  {cost:{wood:5,fiber:3},   w:1.2,h:2,d:0.3,interact:true},
   chair:      {cost:{wood:3},           w:0.6,h:0.9,d:0.6},
-  wardrobe:   {cost:{wood:6,metal:1},   w:0.9,h:2.0,d:0.55,interact:true},
-  desk:       {cost:{wood:5,metal:1},   w:1.4,h:0.85,d:0.7,interact:true},
-  sofa:       {cost:{wood:4,fiber:6},   w:1.8,h:0.8,d:0.8,interact:true},
-  workbench:  {cost:{wood:6,stone:2},   w:1.5,h:1,d:1,interact:true},
-  anvil:      {cost:{metal:6,stone:3},  w:0.7,h:0.7,d:0.5,interact:true},
-  barrel:     {cost:{wood:4,metal:1},   w:0.6,h:1,d:0.6,interact:true},
-  well:       {cost:{stone:8,wood:4},   w:1.5,h:2,d:1.5,noCollide:true,interact:true},
+  wardrobe:   {cost:{wood:6,metal:1},   w:0.9,h:2.0,d:0.55},
+  desk:       {cost:{wood:5,metal:1},   w:1.4,h:0.85,d:0.7},
+  sofa:       {cost:{wood:4,fiber:6},   w:1.8,h:0.8,d:0.8},
+  workbench:  {cost:{wood:6,stone:2},   w:1.5,h:1,d:1},
+  anvil:      {cost:{metal:6,stone:3},  w:0.7,h:0.7,d:0.5},
+  barrel:     {cost:{wood:4,metal:1},   w:0.6,h:1,d:0.6},
+  well:       {cost:{stone:8,wood:4},   w:1.5,h:2,d:1.5,noCollide:true},
   torch:      {cost:{wood:1,fiber:1},   w:0.1,h:0.8,d:0.1,noCollide:true},
   lamp:       {cost:{metal:2,fiber:1},  w:0.15,h:2.5,d:0.15,noCollide:true},
 };
@@ -1027,112 +592,53 @@ function updateGhost(){
   const snappedRy=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
 
   if(selBldType==='floor'||selBldType==='floor_stone'){
-    // Collect all candidate Y levels: terrain + existing floor levels + wall-top levels
-    const levels=new Set();
-    levels.add(gy+def.h/2); // terrain
-    for(const b of placed){
-      const isFloor=b.type==='floor'||b.type==='floor_stone';
-      const isWallTop=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window';
-      const dx=gx-b.x,dz=gz-b.z,d=Math.sqrt(dx*dx+dz*dz);
-      if(isFloor&&d<BDEFS[b.type].w*2.5) levels.add(b.y); // same level as adjacent floor
-      if(isWallTop&&d<5) levels.add(b.y+BDEFS[b.type].h/2+def.h/2); // on top of wall
-    }
-    // Pick level closest to camera Y
-    let best=gy+def.h/2,bestDist=999;
-    for(const ly of levels){const d=Math.abs(ly-camera.position.y);if(d<bestDist){bestDist=d;best=ly;}}
-    ghostMesh.position.set(gx,best,gz);
+    // Snap to same level as adjacent floors, or place on terrain
+    const sameY=getNearbyFloorBaseY(gx,gz);
+    const floorCenterY = sameY!==null ? sameY : gy+def.h/2;
+    ghostMesh.position.set(gx, floorCenterY, gz);
     ghostMesh.rotation.y=0;
-
   }else if(selBldType==='roof'){
-    let roofLevelY=null;
-    for(const b of placed){
-      if(b.type!=='roof')continue;
-      const dx=gx-b.x,dz=gz-b.z;
-      if(Math.sqrt(dx*dx+dz*dz)<BDEFS.roof.w*2.5){roofLevelY=b.y;break;}
-    }
-    if(roofLevelY!==null){
-      ghostMesh.position.set(gx,roofLevelY,gz);
-    }else{
-      let wallTopY=null;
-      for(const b of placed){
-        const isW=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window';
-        if(!isW)continue;
-        const dx=gx-b.x,dz=gz-b.z;
-        if(Math.sqrt(dx*dx+dz*dz)>6)continue;
-        const top=b.y+BDEFS[b.type].h/2;
-        if(wallTopY===null||top>wallTopY)wallTopY=top;
-      }
-      const baseY=wallTopY!==null?wallTopY:gy+3;
-      ghostMesh.position.set(gx,baseY+def.h/2,gz);
-    }
+    const nearbyY=getNearbyFloorY(gx,gz);
+    ghostMesh.position.set(gx,(nearbyY!==null?nearbyY+3:gy+3)+def.h/2,gz);
     ghostMesh.rotation.y=0;
-
   }else if(selBldType==='wall'||selBldType==='wall_stone'||selBldType==='wall_wood'||selBldType==='wall_metal'||selBldType==='wall_door'||selBldType==='wall_window'){
-    // Collect all candidate base Y levels (floor surfaces + wall tops)
-    const candidates=[];
-
-    // Terrain
-    candidates.push({baseY:gy,wx:gx,wz:gz});
-
-    // Floor surfaces nearby — snap to edge
+    // Find nearest floor and snap wall to its edge
+    let bestFloor=null,bestDist=999;
     for(const b of placed){
-      const isFloor=b.type==='floor'||b.type==='floor_stone'||b.type==='platform';
-      if(!isFloor)continue;
-      const bd=BDEFS[b.type];
-      const dx=gx-b.x,dz=gz-b.z,d=Math.sqrt(dx*dx+dz*dz);
-      if(d>6)continue;
-      const surfY=b.y+bd.h/2;
-      // Snap to edge of this floor
-      const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
+      if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='platform')continue;
+      const dx=gx-b.x,dz=gz-b.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      if(dist<bestDist){bestDist=dist;bestFloor=b;}
+    }
+    let wx=gx,wz=gz,wallY=gy;
+    if(bestFloor){
+      const fd=BDEFS[bestFloor.type];
+      const cos=Math.cos(-bestFloor.ry),sin=Math.sin(-bestFloor.ry);
+      const dx=gx-bestFloor.x,dz=gz-bestFloor.z;
       const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
-      const halfW=bd.w/2,halfD=bd.d/2;
+      // Snap to nearest edge of floor if within range
+      const halfW=fd.w/2,halfD=fd.d/2;
       if(Math.abs(lx)<=halfW+1.5&&Math.abs(lz)<=halfD+1.5){
+        wallY=bestFloor.y+fd.h/2;
+        // Clamp to edge
         const clampX=Math.max(-halfW,Math.min(halfW,lx));
         const clampZ=Math.max(-halfD,Math.min(halfD,lz));
-        const wcos=Math.cos(b.ry),wsin=Math.sin(b.ry);
-        const ex=b.x+wcos*clampX-wsin*clampZ;
-        const ez=b.z+wsin*clampX+wcos*clampZ;
-        candidates.push({baseY:surfY,wx:ex,wz:ez});
+        // Convert back to world coords
+        const wcos=Math.cos(bestFloor.ry),wsin=Math.sin(bestFloor.ry);
+        wx=bestFloor.x+wcos*clampX-wsin*clampZ;
+        wz=bestFloor.z+wsin*clampX+wcos*clampZ;
       }
     }
-
-    // Top of existing SOLID walls only (not doors/windows — they shouldn't be stacked on)
-    for(const b of placed){
-      const isSolidWall=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal';
-      if(!isSolidWall)continue;
-      const bd=BDEFS[b.type];
-      const dx=gx-b.x,dz=gz-b.z,d=Math.sqrt(dx*dx+dz*dz);
-      if(d>bd.w+0.8)continue;
-      candidates.push({baseY:b.y+bd.h/2,wx:b.x,wz:b.z});
-    }
-
-    // Pick candidate whose wallCenter Y (baseY + def.h/2) is closest to camera Y
-    let best=candidates[0],bestDist=999;
-    for(const c of candidates){
-      const wallCenterY=c.baseY+def.h/2;
-      const d=Math.abs(wallCenterY-camera.position.y);
-      if(d<bestDist){bestDist=d;best=c;}
-    }
-    ghostMesh.position.set(best.wx,best.baseY+def.h/2,best.wz);
+    ghostMesh.position.set(wx,wallY+def.h/2,wz);
     ghostMesh.rotation.y=snappedRy;
   }else if(selBldType==='platform'){
     const nearbyY=getNearbyFloorY(gx,gz);
     ghostMesh.position.set(gx,nearbyY!==null?nearbyY:gy+def.h/2,gz);
     ghostMesh.rotation.y=snappedRy;
   }else if(selBldType==='stairs'){
-    const sd=BDEFS.stairs;
-    // Find the highest floor/roof/platform surface under or near cursor
-    let bestSurfY=-9999,found=false;
-    for(const b of placed){
-      if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;
-      const def2=BDEFS[b.type];
-      const dx=px-b.x,dz=pz-b.z;
-      if(Math.abs(dx)>def2.w/2+1.5||Math.abs(dz)>def2.d/2+1.5)continue;
-      const surfY=b.y+def2.h/2;
-      if(surfY>bestSurfY){bestSurfY=surfY;found=true;}
-    }
-    const baseY=found?bestSurfY:gy;
-    ghostMesh.position.set(px,baseY+sd.h/2,pz);
+    let stTop=null,stDist=999;
+    for(const b of placed){if(b.type!=='stairs')continue;const d2=Math.sqrt((px-b.x)**2+(pz-b.z)**2);if(d2<4&&d2<stDist){stDist=d2;stTop=b.y+BDEFS.stairs.h/2;}}
+    ghostMesh.position.set(px,(stTop!==null?stTop+BDEFS.stairs.h/2:gy+BDEFS.stairs.h/2),pz);
     ghostMesh.rotation.y=yaw;
   }else{
     const nearbyY=getNearbyFloorY(gx,gz);
@@ -1177,130 +683,13 @@ function tryInteract(){
     return true;
   }
   if(b.type==='wall_window'){b.mesh.userData.winOpen=!b.mesh.userData.winOpen;if(b.mesh.userData.winPivot)b.mesh.userData.winPivot.rotation.y=b.mesh.userData.winOpen?-Math.PI/2:0;showFloat(b.mesh.userData.winOpen?'🪟 Відчинено':'🪟 Зачинено');return true;}
-  if(b.type==='bed'){playerHP=Math.min(maxHP,playerHP+30);hunger=Math.min(100,hunger+10);updHP();showFloat('🛏️ +30 HP, +10 голод');return true;}
+  if(b.type==='bed'){playerHP=Math.min(maxHP,playerHP+30);hunger=Math.min(100,hunger+10);updHP();showFloat('🛏️ +30 HP');return true;}
   if(b.type==='campfire'){if(inv.meat>=1&&inv.coal>=1){inv.meat--;inv.coal--;playerHP=Math.min(maxHP,playerHP+40);hunger=Math.min(100,hunger+50);updHP();renderInv();showFloat('🥩 +40 HP');}else showFloat("❌ Потрібно мясо + вугілля");return true;}
-  if(b.type==='workbench'){showFloat('🔧 Верстак: відкрий інвентар для крафту');toggleInv();return true;}
-  if(b.type==='anvil'){if(inv.metal>=2){inv.metal-=2;inv.sword++;renderInv();showFloat('⚒️ Меч wykuty!');}else showFloat('❌ Потрібно метал×2');return true;}
-  if(b.type==='well'){hunger=Math.min(100,hunger+25);playerHP=Math.min(maxHP,playerHP+10);updHP();showFloat('⛲ +25 голод, +10 HP');return true;}
-  if(b.type==='sofa'){playerHP=Math.min(maxHP,playerHP+15);hunger=Math.min(100,hunger+5);updHP();showFloat('🛋️ +15 HP відпочинок');return true;}
-  if(b.type==='desk'){showFloat('📝 Письмовий стіл: +10% до крафту');return true;}
-  if(b.type==='bookshelf'){playerHP=Math.min(maxHP,playerHP+5);showFloat('📚 Бібліотека: +5 HP мудрості');return true;}
-  if(b.type==='barrel'){if(inv.wood>=2){inv.wood-=2;inv.coal+=2;renderInv();showFloat('🛢️ Бочка: +2 вугілля');}else showFloat('❌ Потрібно дерево×2');return true;}
-  if(b.type==='wardrobe'){hunger=Math.min(100,hunger+10);showFloat('👔 Шафа: +10 комфорту');return true;}
-  if(b.type==='chest'){openChest(b);return true;}
-  if(b.type==='furnace'){openFurnace(b);return true;}
-  if(b.type==='farm'){openFarm(b);return true;}
+  if(b.type==='workbench'){showFloat('🔧 Верстак активовано');return true;}
+  if(b.type==='anvil'){if(inv.metal>=2){inv.metal-=2;inv.sword++;showFloat('⚒️ Меч wykuty!');}else showFloat('❌ Потрібно метал×2');return true;}
+  if(b.type==='well'){hunger=Math.min(100,hunger+20);playerHP=Math.min(maxHP,playerHP+10);showFloat('⛲ +10 HP');return true;}
+  if(b.type==='sofa'){playerHP=Math.min(maxHP,playerHP+15);showFloat('🛋️ +15 HP відпочинок');return true;}
   return false;
-}
-
-// ══ CHEST SYSTEM ══
-let activeChest=null;
-const CHEST_SLOTS=['wood','stone','metal','fiber','coal','food','meat','axe','spear','sword'];
-function openChest(b){
-  if(!b.mesh.userData.storage)b.mesh.userData.storage={};
-  activeChest=b;
-  renderChestGrid();
-  document.getElementById('chestPop').style.display='flex';
-}
-function closeChest(){document.getElementById('chestPop').style.display='none';activeChest=null;}
-function renderChestGrid(){
-  if(!activeChest)return;
-  const s=activeChest.mesh.userData.storage||{};
-  const grid=document.getElementById('chestGrid');
-  grid.innerHTML='';
-  CHEST_SLOTS.forEach(k=>{
-    const v=s[k]||0;
-    const ico={wood:'🪵',stone:'🪨',metal:'⚙️',fiber:'🌿',coal:'🖤',food:'🍖',meat:'🥩',axe:'🪓',spear:'🗡️',sword:'⚔️'}[k]||k;
-    const el=document.createElement('div');
-    el.style.cssText='background:#ffffff10;border-radius:6px;padding:4px;text-align:center;font-size:9px;cursor:pointer;border:1px solid #fff2;';
-    el.innerHTML=`<div style="font-size:14px">${ico}</div><div style="color:#ffe082">${v}</div>`;
-    el.title=`Натисни щоб взяти ${k}`;
-    el.onclick=()=>{if(v>0){inv[k]=(inv[k]||0)+v;s[k]=0;renderInv();renderChestGrid();showFloat(`⬆️ +${v} ${ico}`);}};
-    grid.appendChild(el);
-  });
-}
-function chestDeposit(){
-  if(!activeChest)return;
-  const s=activeChest.mesh.userData.storage||{};
-  CHEST_SLOTS.forEach(k=>{if(inv[k]>0){s[k]=(s[k]||0)+inv[k];inv[k]=0;}});
-  activeChest.mesh.userData.storage=s;
-  renderInv();renderChestGrid();showFloat('⬇️ Все покладено в скриню');
-}
-function chestWithdraw(){
-  if(!activeChest)return;
-  const s=activeChest.mesh.userData.storage||{};
-  CHEST_SLOTS.forEach(k=>{if(s[k]>0){inv[k]=(inv[k]||0)+s[k];s[k]=0;}});
-  activeChest.mesh.userData.storage=s;
-  renderInv();renderChestGrid();showFloat('⬆️ Все забрано зі скрині');
-}
-
-// ══ FURNACE SYSTEM ══
-let activeFurnace=null;
-function openFurnace(b){activeFurnace=b;document.getElementById('furnaceStatus').textContent='';document.getElementById('furnacePop').style.display='flex';}
-function closeFurnace(){document.getElementById('furnacePop').style.display='none';activeFurnace=null;}
-function furnaceSmelt(inRes,outRes,inAmt,coalAmt,outAmt){
-  if(inv[inRes]<inAmt){showFloat(`❌ Потрібно ${inRes}×${inAmt}`);return;}
-  if(coalAmt>0&&inv.coal<coalAmt){showFloat(`❌ Потрібно вугілля×${coalAmt}`);return;}
-  inv[inRes]-=inAmt;
-  if(coalAmt>0)inv.coal-=coalAmt;
-  inv[outRes]=(inv[outRes]||0)+outAmt;
-  renderInv();
-  const ico={wood:'🪵',stone:'🪨',metal:'⚙️',fiber:'🌿',coal:'🖤',food:'🍖',meat:'🥩'}[outRes]||'✨';
-  document.getElementById('furnaceStatus').textContent=`✅ Отримано: ${ico}×${outAmt}`;
-  showFloat(`🏭 +${outAmt} ${ico}`);
-}
-
-// ══ FARM SYSTEM ══
-let activeFarm=null;
-function openFarm(b){
-  activeFarm=b;
-  if(!b.mesh.userData.farm)b.mesh.userData.farm={crop:null,plantedAt:0,ready:false};
-  renderFarmStatus();
-  document.getElementById('farmPop').style.display='flex';
-}
-function closeFarm(){document.getElementById('farmPop').style.display='none';activeFarm=null;}
-function renderFarmStatus(){
-  if(!activeFarm)return;
-  const f=activeFarm.mesh.userData.farm;
-  const el=document.getElementById('farmStatus');
-  const harvestBtn=document.getElementById('farmHarvestBtn');
-  if(!f.crop){el.textContent='Поле порожнє — посій щось';harvestBtn.disabled=true;harvestBtn.style.opacity='0.4';return;}
-  const elapsed=(Date.now()-f.plantedAt)/1000;
-  const growTime=f.crop==='wheat'?60:120; // seconds
-  if(elapsed>=growTime){
-    el.textContent='🌾 Врожай готовий до збору!';
-    harvestBtn.disabled=false;harvestBtn.style.opacity='1';
-  }else{
-    const pct=Math.floor(elapsed/growTime*100);
-    el.textContent=`🌱 Росте ${f.crop==='wheat'?'пшениця':'овочі'}... ${pct}%`;
-    harvestBtn.disabled=true;harvestBtn.style.opacity='0.4';
-    setTimeout(renderFarmStatus,3000);
-  }
-}
-function farmPlant(crop){
-  if(!activeFarm)return;
-  const f=activeFarm.mesh.userData.farm;
-  if(f.crop){showFloat('❌ Поле вже зайняте');return;}
-  const cost=crop==='wheat'?1:2;
-  if(inv.fiber<cost){showFloat(`❌ Потрібно fiber×${cost}`);return;}
-  inv.fiber-=cost;
-  f.crop=crop;f.plantedAt=Date.now();f.ready=false;
-  renderInv();renderFarmStatus();
-  // Visually grow the farm (change color)
-  activeFarm.mesh.traverse(c=>{if(c.isMesh)c.material.color?.setHex(0x2e7d32);});
-  showFloat('🌱 Посіяно! Повернись через '+(crop==='wheat'?'1':'2')+' хв');
-}
-function farmHarvest(){
-  if(!activeFarm)return;
-  const f=activeFarm.mesh.userData.farm;
-  const elapsed=(Date.now()-f.plantedAt)/1000;
-  const growTime=f.crop==='wheat'?60:120;
-  if(elapsed<growTime){showFloat('⏳ Ще не виросло!');return;}
-  if(f.crop==='wheat'){inv.food+=3;showFloat('🌾 Зібрано! +3 їжі');}
-  else{inv.food+=5;inv.fiber+=2;showFloat('🥕 Зібрано! +5 їжі, +2 fiber');}
-  f.crop=null;f.plantedAt=0;
-  renderInv();renderFarmStatus();
-  activeFarm.mesh.traverse(c=>{if(c.isMesh)c.material.color?.setHex(0x5a3010);});
 }
 
 function placeBuilding(){
@@ -1543,37 +932,6 @@ function spawnBld(type,x,y,z,ry,extras={}){
     const ln=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.25,0.2),new THREE.MeshStandardMaterial({color:0xf0e080,emissive:0xffdd00,emissiveIntensity:0.8,transparent:true,opacity:0.9}));ln.position.set(0.38,1.0,0);g.add(ln);
     const ll=new THREE.PointLight(0xffee88,1.0,8);ll.position.set(0.38,0.95,0);g.add(ll);fireLights.push({light:ll,base:1.0,mesh:ln,innerMesh:null});
 
-  }else if(type==='furnace'){
-    // Stone body with fire opening
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1,1.2,1),matTex(TEX.stone));g.add(body);
-    const opening=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.4,0.12),new THREE.MeshStandardMaterial({color:0xff4400,emissive:0xff2200,emissiveIntensity:1.5}));opening.position.set(0,-0.2,0.52);g.add(opening);
-    const chimney=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.15,0.5,6),matTex(TEX.stone));chimney.position.set(0,0.85,0);g.add(chimney);
-    const smoke=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshStandardMaterial({color:0x555,transparent:true,opacity:0.4}));smoke.position.set(0,1.2,0);g.add(smoke);
-    const fl2=new THREE.PointLight(0xff6600,0.8,3);fl2.position.set(0,0,0.4);g.add(fl2);fireLights.push({light:fl2,base:0.8,mesh:opening,innerMesh:null});
-
-  }else if(type==='farm'){
-    // Raised soil bed
-    const soil=new THREE.Mesh(new THREE.BoxGeometry(2,0.2,2),new THREE.MeshStandardMaterial({color:0x5a3010,roughness:1}));g.add(soil);
-    const border=new THREE.MeshStandardMaterial({color:0x4e342e,roughness:0.9});
-    [[2.05,0.25,0.15,0],[0.15,0.25,2.05,0],[2.05,0.25,0.15,1],[0.15,0.25,2.05,1]].forEach(([w,h,d,s])=>{
-      const b2=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),border);
-      b2.position.set(s===0?0:0,0,s===1?0:0);g.add(b2);
-    });
-    // Wooden frame
-    [[-0.95,0,0],[0.95,0,0],[0,-0,0.95],[0,0,-0.95]].forEach(([fx,,fz])=>{
-      const plank=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(fz)>0.1?0.1:2.1,0.3,Math.abs(fz)>0.1?2.1:0.1),matTex(TEX.wood));
-      plank.position.set(fx,0,fz);g.add(plank);
-    });
-
-  }else if(type==='bookshelf'){
-    const back=new THREE.Mesh(new THREE.BoxGeometry(1.2,2,0.08),matTex(TEX.wood));g.add(back);
-    const topP=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.06,0.28),matTex(TEX.wood));topP.position.set(0,0.97,0.12);g.add(topP);
-    const midP=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.06,0.28),matTex(TEX.wood));midP.position.set(0,0,0.12);g.add(midP);
-    const botP=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.06,0.28),matTex(TEX.wood));botP.position.set(0,-0.97,0.12);g.add(botP);
-    const bCols=[0x8b0000,0x00008b,0x006400,0x8b4513,0x4b0082];
-    for(let i=0;i<8;i++){const bk=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.35+Math.random()*0.25,0.22),new THREE.MeshStandardMaterial({color:bCols[i%bCols.length],roughness:0.9}));bk.position.set(-0.5+i*0.14,0.6,0.12);g.add(bk);}
-    for(let i=0;i<7;i++){const bk=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.3+Math.random()*0.2,0.22),new THREE.MeshStandardMaterial({color:bCols[(i+2)%bCols.length],roughness:0.9}));bk.position.set(-0.45+i*0.14,-0.37,0.12);g.add(bk);}
-
   }else{
     g.add(new THREE.Mesh(new THREE.BoxGeometry(def?def.w:1,def?def.h:1,def?def.d:1),new THREE.MeshStandardMaterial({color:0xbc8a5f,roughness:0.9})));
   }
@@ -1620,110 +978,21 @@ const charSpd=()=>charCfg().speed;const charDmg=()=>charCfg().dmg;
 function updHP(){const p=(playerHP/maxHP)*100;document.getElementById('hpBar').style.width=p+'%';document.getElementById('hpBar').style.background=p>60?'#4caf50':p>30?'#ff9800':'#e53935';document.getElementById('hpNum').textContent=Math.max(0,Math.round(playerHP));document.getElementById('hunBar').style.width=hunger+'%';}
 function takeDmg(d){if(isDead)return;playerHP=Math.max(0,playerHP-d);updHP();showFloat('💔 -'+d);if(playerHP<=0)die();}
 function eatFood(){if(inv.food<=0){showFloat('❌ Немає їжі');return;}inv.food--;hunger=Math.min(100,hunger+35);playerHP=Math.min(maxHP,playerHP+15);updHP();showFloat('🍖 +15 HP');renderInv();}
-function die(){
-  isDead=true;
-  // Save full inventory before death — persists through reload
-  saveInv(roomId);
-  // Create drop for others to loot (player keeps inv on respawn)
-  const dropItems=[];
-  Object.entries(inv).forEach(([k,v])=>{if(v>0)dropItems.push({k,v});});
-  if(dropItems.length){
-    const dr={x:playerPos.x+Math.random()*2-1,z:playerPos.z+Math.random()*2-1,items:dropItems,id:'drop_'+Date.now()};
-    drops.push(dr);spawnDropMesh(dr);broadcast({type:'drop',drop:dr});
-  }
-  document.getElementById('death').style.display='flex';
-}
-document.getElementById('respBtn').addEventListener('click',()=>{
-  playerHP=maxHP;hunger=100;
-  playerPos.set(Math.random()*20-10,5,Math.random()*20-10);
-  playerVelY=0;isDead=false;
-  document.getElementById('death').style.display='none';
-  updHP();renderInv();
-});
+function die(){isDead=true;const dropItems=[];Object.entries(inv).forEach(([k,v])=>{if(v>0){dropItems.push({k,v});inv[k]=0;}});if(dropItems.length){const dr={x:playerPos.x+Math.random()*2-1,z:playerPos.z+Math.random()*2-1,items:dropItems,id:'drop_'+Date.now()};drops.push(dr);spawnDropMesh(dr);broadcast({type:'drop',drop:dr});}document.getElementById('death').style.display='flex';}
+document.getElementById('respBtn').addEventListener('click',()=>{playerHP=maxHP;hunger=100;Object.keys(inv).forEach(k=>inv[k]=0);playerPos.set(Math.random()*20-10,5,Math.random()*20-10);playerVelY=0;isDead=false;document.getElementById('death').style.display='none';updHP();});
 function updHunger(dt){hunger=Math.max(0,hunger-dt*1.2);if(hunger<=0){playerHP=Math.max(0,playerHP-dt*2);updHP();if(playerHP<=0)die();}document.getElementById('hunBar').style.width=hunger+'%';}
 let fRAF=null;
 function showFloat(msg){const el=document.getElementById('float');el.textContent=msg;el.style.opacity='1';el.style.top='38%';cancelAnimationFrame(fRAF);const s=performance.now();(function rise(){const t=(performance.now()-s)/800;if(t<1){el.style.top=(38-t*9)+'%';fRAF=requestAnimationFrame(rise);}else el.style.opacity='0';})();}
 
 // ══ RAYCASTING / COMBAT ══
 let tTree=null,tRock=null,tPlayer=null,tPlant=null;
-let tAnimalTarget=null,tMonsterTarget=null,tMushroom=null,tBerry=null,tCave=null,tRuin=null;
-function castRay(){
-  RAY.setFromCamera(CTR,camera);
-  tTree=null;tRock=null;tPlayer=null;tPlant=null;
-  tAnimalTarget=null;tMonsterTarget=null;tMushroom=null;tBerry=null;tCave=null;tRuin=null;
-  for(const[pid,rp]of Object.entries(remPlayers)){const h=RAY.intersectObject(rp.mesh,true);if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;}}
-  if(typeof animals!=='undefined')for(const a of animals){if(!a.alive)continue;const h=RAY.intersectObject(a.group,true);if(h.length&&h[0].distance<6){tAnimalTarget=a;return;}}
-  if(typeof monsters!=='undefined')for(const m of monsters){if(!m.alive)continue;const h=RAY.intersectObject(m.group,true);if(h.length&&h[0].distance<6){tMonsterTarget=m;return;}}
-  for(const t of trees){if(!t.alive)continue;const h=RAY.intersectObject(t.group,true);if(h.length&&h[0].distance<9){tTree=t;return;}}
-  for(const r of rocks){const h=RAY.intersectObject(r.mesh,true);if(h.length&&h[0].distance<7){tRock=r;return;}}
-  for(const p of plants){if(!p.alive)continue;const h=RAY.intersectObject(p.group,true);if(h.length&&h[0].distance<5){tPlant=p;return;}}
-  if(typeof mushrooms!=='undefined')for(const mu of mushrooms){if(!mu.alive)continue;const h=RAY.intersectObject(mu.group,true);if(h.length&&h[0].distance<4){tMushroom=mu;return;}}
-  if(typeof berries!=='undefined')for(const b of berries){if(!b.alive)continue;const h=RAY.intersectObject(b.group,true);if(h.length&&h[0].distance<4){tBerry=b;return;}}
-  if(typeof caves!=='undefined')for(const c of caves){if(Math.sqrt((playerPos.x-c.x)**2+(playerPos.z-c.z)**2)<3){tCave=c;return;}}
-  if(typeof ruins!=='undefined')for(const r of ruins){if(Math.sqrt((playerPos.x-r.x)**2+(playerPos.z-r.z)**2)<4){tRuin=r;return;}}
-}
+function castRay(){RAY.setFromCamera(CTR,camera);tTree=null;tRock=null;tPlayer=null;tPlant=null;for(const[pid,rp]of Object.entries(remPlayers)){const h=RAY.intersectObject(rp.mesh,true);if(h.length&&h[0].distance<6){tPlayer={pid,rp};return;}}for(const t of trees){if(!t.alive)continue;const h=RAY.intersectObject(t.group,true);if(h.length&&h[0].distance<9){tTree=t;return;}}for(const r of rocks){const h=RAY.intersectObject(r.mesh,true);if(h.length&&h[0].distance<7){tRock=r;return;}}for(const p of plants){if(!p.alive)continue;const h=RAY.intersectObject(p.group,true);if(h.length&&h[0].distance<5){tPlant=p;return;}}}
 const tHPEl=document.getElementById('tgtHP'),tHPBar=document.getElementById('tgtBar');
 function updTgt(t){if(!t){tHPEl.style.display='none';return;}tHPEl.style.display='block';const p=(t.hp/t.maxHp)*100;tHPBar.style.width=p+'%';tHPBar.style.background=p>60?'#4caf50':p>30?'#ff9800':'#f44336';}
 function shake(mesh){const o=mesh.position.clone();let t=0;(function s(){t+=0.08;mesh.position.x=o.x+Math.sin(t*30)*0.08*Math.exp(-t*3);if(t<1.2)requestAnimationFrame(s);else mesh.position.copy(o);})();}
 function fellTree(t){t.alive=false;const dir=Math.random()>.5?1:-1,st=performance.now();(function fall(){const a=Math.min((performance.now()-st)/1000*1.8,Math.PI/2);t.group.rotation.z=dir*a;if(a<Math.PI/2)requestAnimationFrame(fall);else setTimeout(()=>{t.group.rotation.z=0;t.hp=t.maxHp;t.alive=true;},10000);})();inv.wood+=2+Math.floor(Math.random()*3);showFloat('🪵 +дерево');broadcast({type:'tree_fell',id:t.id,dir});}
 let lastAct=0;
-function doAction(){
-  if(isDead)return;
-  if(buildMode){placeBuilding();return;}
-  const now=performance.now();
-  const cooldown=inv.axe>0?300:600;
-  if(now-lastAct<cooldown)return;
-  lastAct=now;
-  if(tryInteract())return;
-  castRay();
-  if(tPlayer){const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});showFloat('⚔️ -'+dmg);return;}
-  if(tAnimalTarget){
-    const a=tAnimalTarget;shake(a.group);
-    const dmg=inv.sword>0?20:inv.spear>0?15:charDmg();
-    a.hp-=dmg;showFloat('🗡️ '+a.type+' -'+dmg);
-    if(a.hp<=0){a.alive=false;a.group.visible=false;
-      const drops=a.type==='boar'?{meat:3,fiber:1}:a.type==='deer'?{meat:2}:{meat:1,fiber:1};
-      Object.entries(drops).forEach(([k,v])=>inv[k]=(inv[k]||0)+v);
-      renderInv();showFloat('🥩 Здобич!');
-      setTimeout(()=>{a.alive=true;a.group.visible=true;a.hp=a.maxHp;a.x=(Math.random()-.5)*150;a.z=(Math.random()-.5)*150;},60000);
-    }
-    return;
-  }
-  if(tMonsterTarget){
-    const m=tMonsterTarget;shake(m.group);
-    const dmg=inv.sword>0?35:inv.spear>0?20:charDmg();
-    m.hp-=dmg;showFloat('⚔️ '+m.type+' -'+dmg);
-    return;
-  }
-  if(tMushroom){
-    const mu=tMushroom;mu.alive=false;mu.group.visible=false;
-    if(mu.poison){playerHP=Math.max(1,playerHP-20);updHP();showFloat('☠️ Отруйний гриб! -20HP');}
-    else{hunger=Math.min(100,hunger+20);showFloat('🍄 +20 голод');}
-    setTimeout(()=>{mu.alive=true;mu.group.visible=true;},45000);
-    return;
-  }
-  if(tBerry){
-    const b=tBerry;b.alive=false;b.group.visible=false;
-    inv.food++;hunger=Math.min(100,hunger+15);renderInv();showFloat('🫐 +їжа +15 голод');
-    setTimeout(()=>{b.alive=true;b.group.visible=true;},30000);
-    return;
-  }
-  if(tCave){
-    if(!tCave.looted){tCave.looted=true;inv.stone+=5;inv.metal+=2;if(Math.random()<0.3)inv.coal+=3;renderInv();showFloat('⛏️ Печера! +камінь +метал');}
-    else showFloat('🕳️ Печера вже досліджена');
-    return;
-  }
-  if(tRuin){
-    if(!tRuin.looted){tRuin.looted=true;const lk=['wood','stone','fiber','food','metal'];const k=lk[Math.floor(Math.random()*lk.length)];inv[k]=(inv[k]||0)+3+Math.floor(Math.random()*4);renderInv();showFloat('🏚️ Руїни! Знайдено скарб!');}
-    else showFloat('🏚️ Руїни вже обшукані');
-    return;
-  }
-  if(tTree){shake(tTree.group);const hits=inv.axe>0?2:1;tTree.hp-=hits;showFloat(inv.axe>0?'🪓 -'+hits:'🤜 -1');if(tTree.hp<=0){fellTree(tTree);if(Math.random()<0.1&&typeof startFire!=='undefined')startFire(tTree.x,tTree.z,tTree.group.position.y);}return;}
-  if(tRock){shake(tRock.mesh);inv.stone+=1+(inv.axe>0?1:0);if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}else showFloat('🪨 +1');return;}
-  if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},25000);return;}
-  if(typeof nearWater!=='undefined'&&nearWater(playerPos.x,playerPos.z)){hunger=Math.min(100,hunger+30);playerHP=Math.min(maxHP,playerHP+5);updHP();showFloat('💧 +вода +30 голод');return;}
-  showFloat('❌ Немає цілі');
-}
+function doAction(){if(isDead)return;if(buildMode){placeBuilding();return;}const now=performance.now();if(now-lastAct<600)return;lastAct=now;if(tryInteract())return;castRay();if(tPlayer){const dmg=inv.sword>0?40:inv.spear>0?25:charDmg();broadcast({type:'pvp_hit',target:tPlayer.pid,dmg,from:myNick});showFloat('⚔️ -'+dmg);return;}if(tTree){shake(tTree.group);tTree.hp--;if(tTree.hp<=0)fellTree(tTree);return;}if(tRock){shake(tRock.mesh);inv.stone+=1+(inv.axe>0?1:0);if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}else showFloat('🪨 +1');return;}if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);return;}showFloat('❌ Немає цілі');}
 let holdT=null;
 const actBtn=document.getElementById('actBtn');
 actBtn.addEventListener('touchstart',e=>{e.preventDefault();if(buildMode){placeBuilding();return;}holdT=setTimeout(()=>{eatFood();holdT=null;},500);},{passive:false});
@@ -1932,109 +1201,65 @@ function handleMsg(fromPid,raw){
   }
 }
 
-// ══ MULTIPLAYER via JSONBin polling (no PeerJS) ══
-let pollInt=null;
-let lastMsgTs={};
-
-function setupConn(){}// stub - not used with polling
-
-function setupPeer(cb){
-  // No PeerJS — just generate a local ID and call back immediately
-  myId='p-'+Math.random().toString(36).slice(2,10);
-  setTimeout(()=>cb(myId),0);
+function setupConn(conn){
+  conn.on('open',()=>{
+    if(!isHost)return;
+    if(Object.keys(clientConns).length>=5){
+      conn.send({type:'full'});conn.close();return;
+    }
+    clientConns[conn.peer]=conn;
+    // PeerJS with no serialization option sends JS objects natively
+    conn.on('data',data=>{
+      const raw=typeof data==='string'?data:JSON.stringify(data);
+      handleMsg(conn.peer,raw);
+    });
+    conn.on('close',()=>{
+      handleMsg(conn.peer,JSON.stringify({type:'bye'}));
+      delete clientConns[conn.peer];updPC();
+    });
+    conn.on('error',()=>{delete clientConns[conn.peer];updPC();});
+  });
 }
 
-function resetNet(){
-  isHost=false;hostConn=null;clientConns={};
-  Object.keys(remPlayers).forEach(pid=>remRP(pid));
-  if(announceInt){clearInterval(announceInt);announceInt=null;}
-  if(pollInt){clearInterval(pollInt);pollInt=null;}
-  if(window._worldSaveInt){clearInterval(window._worldSaveInt);window._worldSaveInt=null;}
-  myPeer=null;
-  document.getElementById('createBtn').disabled=false;
+function setupPeer(id,cb){
+  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+  myPeer=new Peer(id);// No debug, no serialization override — use PeerJS defaults
+  myPeer.on('open',rid=>{
+    myId=rid;
+    setStatus('✅ Твій ID: '+rid);
+    console.log('[PeerJS] Peer open, id=',rid);
+    if(cb)cb(rid);
+  });
+  myPeer.on('connection',conn=>{
+    console.log('[PeerJS] Incoming connection from',conn.peer);
+    setupConn(conn);
+  });
+  myPeer.on('disconnected',()=>{
+    console.log('[PeerJS] Disconnected, reconnecting...');
+    try{myPeer.reconnect();}catch(e){}
+  });
+  myPeer.on('error',err=>{
+    console.error('[PeerJS] Error:',err.type,err);
+    if(err.type==='unavailable-id'){
+      setupPeer('tf-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),cb);
+    }else if(err.type==='peer-unavailable'){
+      setStatus('❌ Кімната не знайдена або хост офлайн.');
+      document.getElementById('createBtn').disabled=false;
+      if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
+    }else{
+      setStatus('❌ Мережева помилка: '+err.type);
+      document.getElementById('createBtn').disabled=false;
+    }
+  });
 }
-
-// Send a message to the room via JSONBin
-async function broadcast(msg){
-  if(!roomId)return;
-  try{
-    const key='tf_msg_'+roomId;
-    const entry={...msg,_from:myId,_ts:Date.now()};
-    // Store in localStorage for BroadcastChannel (same device)
-    if(BC)BC.postMessage({type:'game',roomId,msg:entry});
-    // Also push to JSONBin messages queue
-    let current={msgs:[]};
-    try{
-      const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
-      if(r.ok){const d=await r.json();current=d&&d.msgs?d:{msgs:[],rooms:d||{}};}
-    }catch(e){}
-    if(!current.msgs)current.msgs=[];
-    current.msgs.push(entry);
-    // Keep only last 50 messages and last 5 minutes
-    const cutoff=Date.now()-300000;
-    current.msgs=current.msgs.filter(m=>m._ts>cutoff).slice(-50);
-    await apiFetch(BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(current)});
-  }catch(e){}
-}
-
-// Poll for new messages from other players
-function startPoll(rid){
-  if(pollInt)clearInterval(pollInt);
-  lastMsgTs[rid]=Date.now();
-  pollInt=setInterval(async()=>{
-    if(!rid||isHost)return; // host doesn't poll — clients do
-    try{
-      const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
-      if(!r.ok)return;
-      const d=await r.json();
-      const msgs=(d&&d.msgs)||[];
-      const cutoff=lastMsgTs[rid]||0;
-      msgs.filter(m=>m._ts>cutoff&&m._from!==myId&&m._roomId===rid).forEach(m=>{
-        lastMsgTs[rid]=Math.max(lastMsgTs[rid]||0,m._ts);
-        handleMsg(m._from,JSON.stringify(m));
-      });
-    }catch(e){}
-  },2000);
-}
-
-function startAutoSave(id){
-  if(window._worldSaveInt)clearInterval(window._worldSaveInt);
-  window._worldSaveInt=setInterval(()=>{saveInv(id);if(isHost)saveWorld(id);},25000);
-}
-
-function createRoom(){
-  resetNet();
-  roomId='tf-'+Math.random().toString(36).slice(2,9);
-  isHost=true;
-  document.getElementById('createBtn').disabled=true;
-  myId='h-'+Math.random().toString(36).slice(2,10);
-  document.getElementById('lbStatus').innerHTML=
-    '✅ Кімната: <b style="color:#ffe082">'+roomId+'</b> '+
-    '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+roomId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
-    'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
-  saveRoom(roomId,myNick,true);
-  announceRoom(roomId,myNick,1,false,myId);
-  announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false,myId),15000);
-  startAutoSave(roomId);
-  startGame();
-  loadInv(roomId);renderInv();
-  addChat('🏠','Кімната: '+roomId+' · Поділись ID з другом');
-  showRoomIdBanner(roomId);
-  const world=loadWorld(roomId);
-  if(world&&world.buildings&&world.buildings.length){
-    world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
-    showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
-  }
-}
-
-
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
 async function refreshRooms(){
   setStatus("🔄 Оновлення...");
   let rooms={};
   try{rooms=await fetchRooms();}catch(e){rooms=_local;}
   const now=Date.now();
-  const all=Object.entries(rooms).filter(([,r])=>r&&r.nick&&now-(r.ts||0)<2*3600*1000);
+  // Show ALL rooms from past 30 days (not just 7)
+  const all=Object.entries(rooms).filter(([,r])=>r&&r.nick&&now-(r.ts||0)<30*24*3600*1000);
   const list=document.getElementById("roomList");
   if(!all.length){
     list.innerHTML="<div style='padding:14px;text-align:center;color:#555'>Немає кімнат 🌲<br><span style='font-size:10px'>Створи кімнату або введи ID вручну</span></div>";
@@ -2056,8 +1281,37 @@ async function refreshRooms(){
   });
   setStatus("Знайдено кімнат: "+all.length);
 }
+function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}document.getElementById('createBtn').disabled=false;}
 
+function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSaveInt);window._worldSaveInt=setInterval(()=>{if(isHost){saveWorld(id);saveInv(id);}},20000);}
 
+function createRoom(){
+  resetNet();
+  roomId='tf-'+Math.random().toString(36).slice(2,9);
+  isHost=true;
+  setStatus('⏳ Створюємо кімнату...');
+  document.getElementById('createBtn').disabled=true;
+  setupPeer(roomId,()=>{
+    // Show room ID prominently in lobby before entering game
+    document.getElementById('lbStatus').innerHTML=
+      '✅ Кімната: <b style="color:#ffe082">'+roomId+'</b> '+
+      '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+roomId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
+      'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
+    saveRoom(roomId,myNick);
+    announceRoom(roomId,myNick,1,false);
+    announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false),15000);
+    startAutoSave(roomId);
+    startGame();
+    loadInv(roomId);renderInv();
+    addChat('🏠','Кімната: '+roomId+' · Поділись ID з другом');
+    showRoomIdBanner(roomId);
+    const world=loadWorld(roomId);
+    if(world&&world.buildings&&world.buildings.length){
+      world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
+      showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
+    }
+  });
+}
 
 function showRoomIdBanner(rid){
   let banner=document.getElementById('roomIdBanner');
@@ -2071,53 +1325,71 @@ function showRoomIdBanner(rid){
   banner.style.display='flex';
 }
 function joinRoom(id,hostNick){
+  resetNet();
   id=(id||'').trim().toLowerCase().replace(/\s+/g,'');
   if(!id){setStatus('❌ Введи ID кімнати');return;}
-  const savedRooms=getSaved();
-  const isMyRoom=savedRooms.some(r=>r.id===id&&(r.own===true||(r.own===undefined&&r.nick===myNick)));
-  if(isMyRoom){reopenMyRoom(id);return;}
-  resetNet();
-  roomId=id;isHost=false;
-  myId='c-'+Math.random().toString(36).slice(2,10);
+  roomId=id;
+  setStatus('🔗 Підключення до: '+id);
+  document.getElementById('createBtn').disabled=true;
   saveRoom(id,hostNick||'Хост');
-  startAutoSave(id);
-  loadInv(id);renderInv();
-  startGame();
-  startPoll(id);
-  setStatus('✅ Підключено до '+id);
-  addChat('🔗','Підключено до кімнати: '+id);
+  // Use random client ID to avoid collisions
+  const clientId='cl-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+  setupPeer(clientId,myPeerId=>{
+    setStatus('⏳ Шукаємо хоста '+id+'...');
+    // Connect WITHOUT serialization:'json' — let PeerJS handle it natively
+    hostConn=myPeer.connect(id,{reliable:true});
+    let connected=false;
+    const timeout=setTimeout(()=>{
+      if(!connected){
+        setStatus('❌ Хост не відповідає. Перевір ID або чи хост онлайн.');
+        document.getElementById('createBtn').disabled=false;
+      }
+    },10000);
+    hostConn.on('open',()=>{
+      clearTimeout(timeout);
+      connected=true;
+      isHost=false;
+      setStatus('✅ Підключено до '+id+'!');
+      hostConn.send({type:'hello',nick:myNick,char:myChar});
+      loadInv(id);renderInv();
+      startGame();
+    });
+    hostConn.on('data',data=>{
+      // PeerJS may deliver as object or string — normalize
+      handleMsg(hostConn.peer, typeof data==='string'?data:JSON.stringify(data));
+    });
+    hostConn.on('close',()=>{
+      addChat('🔌','Хост відключився — беремо управління...');
+      setStatus('👑 Хост пішов, стаєш хостом...');
+      const savedRoomId=roomId;
+      setTimeout(()=>{
+        if(!isHost)becomeHost(savedRoomId);
+      },1000);
+    });
+    hostConn.on('error',e=>{
+      clearTimeout(timeout);
+      setStatus('❌ Помилка: '+(e.type||e));
+      console.error('hostConn error',e);
+    });
+  });
 }
-
-function reopenMyRoom(id){
-  resetNet();
-  roomId=id;isHost=true;
-  myId='h-'+Math.random().toString(36).slice(2,10);
-  document.getElementById('lbStatus').innerHTML=
-    '✅ Кімната: <b style="color:#ffe082">'+id+'</b> '+
-    '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+id+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
-    'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
-  saveRoom(id,myNick,true);
-  announceRoom(id,myNick,1,false,myId);
-  announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false,myId),15000);
-  startAutoSave(id);startGame();loadInv(id);renderInv();
-  showRoomIdBanner(id);
-  addChat('🏠','Кімната відновлена: '+id);
-  const world=loadWorld(id);
-  if(world&&world.buildings&&world.buildings.length){
-    world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
-    showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
-  }
-}
-
 function becomeHost(id){
-  if(isHost)return;
+  // Called when original host disconnects — take over the room
+  if(isHost)return; // already host
+  setStatus('👑 Стаєш хостом...');
+  const hadBuildings=[...placed]; // remember current buildings
+  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
   isHost=true;
-  myId='h-'+Math.random().toString(36).slice(2,10);
-  saveRoom(id,myNick,true);
-  announceRoom(id,myNick,1,false,myId);
-  announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false,myId),15000);
-  showFloat('👑 Ти став хостом!');
-  addChat('👑','Ти тепер хост кімнати '+id);
+  // Take over the original room ID so others can still connect
+  setupPeer(id,()=>{
+    setStatus('👑 Ти новий хост! ID: '+id);
+    saveRoom(id,myNick);
+    announceRoom(id,myNick,1+Object.keys(clientConns).length,false);
+    announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false),15000);
+    startAutoSave(id);
+    showFloat('👑 Ти став хостом!');
+    addChat('👑','Хост пішов. Ти тепер хост кімнати '+id);
+  });
 }
 
 function exitToLobby(){
@@ -2138,8 +1410,8 @@ function exitToLobby(){
     });
   }
   broadcast({type:'bye'});
-  saveInv(roomId); // save BEFORE resetNet clears roomId
   if(isHost){clearInterval(announceInt);if(window._worldSaveInt)clearInterval(window._worldSaveInt);saveWorld(roomId);removeRoom(roomId);}
+  saveInv(roomId);
   resetNet();
   document.getElementById('game').style.display='none';document.getElementById('lobby').style.display='flex';
   if(myMesh){scene.remove(myMesh);myMesh=null;}
@@ -2195,7 +1467,7 @@ function toggleMinimap(){
   document.getElementById('mmClose').textContent=minimapVisible?'✕ карта':'🗺️ карта';
 }
 
-let lastT=performance.now(),lastSync=0,lastInvSave=0,legPh=0,mmTick=0;
+let lastT=performance.now(),lastSync=0,legPh=0,mmTick=0;
 function startGame(){
   const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;
   playerPos.set(Math.random()*10-5,5,Math.random()*10-5);
@@ -2227,64 +1499,13 @@ function gameLoop(){
     if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}else isOnGround=false;
     if(camMode===1){const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z;camera.position.set(cx,playerPos.y+CAM3P.y,cz);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));}
     else if(camMode===2){camera.position.set(playerPos.x+Math.sin(yaw)*3.2,playerPos.y+1.4,playerPos.z+Math.cos(yaw)*3.2);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));}
-    else{camera.position.set(playerPos.x,playerPos.y+0.75,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
-    if(myMesh){
-      myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);
-      myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;
-      myMesh.visible=(camMode===1||camMode===2);
-      const sw=Math.sin(legPh);       // -1..1 walk cycle
-      const sw2=Math.sin(legPh*2);    // knee/elbow secondary
-      myMesh.children.forEach(c=>{
-        if(c.name==='legL'){
-          c.rotation.x = moving ? sw*0.55 : Math.sin(now*0.001)*0.02; // hip swing
-          if(c.userData.knee) c.userData.knee.rotation.x = moving ? Math.max(0,sw*0.45) : 0; // knee only bends forward
-        } else if(c.name==='legR'){
-          c.rotation.x = moving ? -sw*0.55 : Math.sin(now*0.001+0.5)*0.02;
-          if(c.userData.knee) c.userData.knee.rotation.x = moving ? Math.max(0,-sw*0.45) : 0;
-        } else if(c.name==='armL'){
-          if(moving){
-            c.rotation.x = -sw*0.5;  // opposite to legL
-            if(c.userData.elbow) c.userData.elbow.rotation.x = Math.max(0,-sw*0.3);
-          } else {
-            c.rotation.x = Math.sin(now*0.0008)*0.04; // idle breath
-            if(c.userData.elbow) c.userData.elbow.rotation.x = 0;
-          }
-        } else if(c.name==='armR'){
-          if(moving){
-            c.rotation.x = sw*0.5;
-            if(c.userData.elbow) c.userData.elbow.rotation.x = Math.max(0,sw*0.3);
-          } else {
-            c.rotation.x = Math.sin(now*0.0008+0.3)*0.04;
-            if(c.userData.elbow) c.userData.elbow.rotation.x = 0;
-          }
-        }
-      });
-      // Idle body bob + walk bounce
-      if(moving){
-        myMesh.position.y += Math.abs(sw)*0.03; // subtle vertical bounce
-      }
-      // Jump pose — arms up, legs together
-      if(!isOnGround){
-        myMesh.children.forEach(c=>{
-          if(c.name==='legL'){c.rotation.x=-0.25;if(c.userData.knee)c.userData.knee.rotation.x=0.5;}
-          else if(c.name==='legR'){c.rotation.x=-0.25;if(c.userData.knee)c.userData.knee.rotation.x=0.5;}
-          else if(c.name==='armL'){c.rotation.x=-0.7;if(c.userData.elbow)c.userData.elbow.rotation.x=0.4;}
-          else if(c.name==='armR'){c.rotation.x=-0.7;if(c.userData.elbow)c.userData.elbow.rotation.x=0.4;}
-        });
-      }
-    }    updHunger(dt*(typeof hungerMult==='function'?hungerMult():1));checkPickup();
-    try{
-      if(typeof updateAnimals==='function')updateAnimals(dt,now);
-      if(typeof updateMonsters==='function')updateMonsters(dt,now);
-      if(typeof updateWeather==='function')updateWeather(dt);
-      if(typeof updateSeason==='function')updateSeason(dt);
-      if(typeof updateFires==='function')updateFires(dt);
-      const isNight=gameTime>0.7||gameTime<0.2;
-      scene.fog.near=isNight?8:30;scene.fog.far=isNight?35:120;
-    }catch(e){}
-    if(!buildMode){castRay();updTgt(tAnimalTarget||tMonsterTarget||tTree);}
+    else{camera.position.set(playerPos.x,playerPos.y+0.9,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
+    if(myMesh){myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;myMesh.visible=(camMode===1||camMode===2);if(moving){const sw=Math.sin(legPh)*0.4;myMesh.children.forEach(c=>{if(c.name==='legL')c.rotation.x=sw;else if(c.name==='legR')c.rotation.x=-sw;else if(c.name==='armL')c.rotation.x=-sw*0.5;else if(c.name==='armR')c.rotation.x=sw*0.5;});}}
+    updHunger(dt);checkPickup();
+    if(!buildMode){castRay();updTgt(tTree);}
     else{
       if(selBldType==='__move'&&movingBld!==-1){
+        // Update ghost to follow camera aim, using correct snapped position
         if(ghostMesh){
           const b=placed[movingBld];
           const def2=BDEFS[b.type];
@@ -2294,61 +1515,22 @@ function gameLoop(){
           let gx2=px2,gz2=pz2;
           if(def2&&def2.snap){gx2=snapG(px2,def2.w);gz2=snapG(pz2,def2.d);}
           const snappedRy2=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
-          const gy2=getH(gx2,gz2);
-          let targetY=gy2+def2.h/2;
 
-          const isFloor2=(b.type==='floor'||b.type==='floor_stone');
-          const isRoof2=(b.type==='roof');
-          const isWall2=(b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window');
-
-          if(isFloor2){
-            // Collect all Y levels, pick closest to camera
-            const levels=new Set();
-            levels.add(gy2+def2.h/2);
-            for(const ob of placed){
-              if(ob===b)continue;
-              const isF=ob.type==='floor'||ob.type==='floor_stone';
-              const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||ob.type==='wall_window';
-              const dx=gx2-ob.x,dz=gz2-ob.z,d=Math.sqrt(dx*dx+dz*dz);
-              if(isF&&d<BDEFS[ob.type].w*2.5)levels.add(ob.y);
-              if(isW&&d<5)levels.add(ob.y+BDEFS[ob.type].h/2+def2.h/2);
+          // Determine Y: use floor Y or terrain Y — same logic as updateGhost
+          const isFloor=(b.type==='floor'||b.type==='floor_stone');
+          let targetY;
+          if(isFloor){
+            const sameY=getNearbyFloorBaseY(gx2,gz2);
+            targetY=sameY!==null?sameY:getH(gx2,gz2)+def2.h/2;
+          }else{
+            const nearbyY=getNearbyFloorY(gx2,gz2);
+            const gy2=getH(gx2,gz2);
+            if(b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window'){
+              targetY=(nearbyY!==null?nearbyY:gy2)+def2.h/2;
+            }else{
+              targetY=(nearbyY!==null?nearbyY:gy2)+def2.h/2;
             }
-            let best=gy2+def2.h/2,bestDist=999;
-            for(const ly of levels){const d=Math.abs(ly-camera.position.y);if(d<bestDist){bestDist=d;best=ly;}}
-            targetY=best;
-
-          }else if(isRoof2){
-            let bestY=null,bestDist=999;
-            for(const ob of placed){
-              if(ob===b)continue;
-              const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||ob.type==='wall_window';
-              if(!isW&&ob.type!=='roof')continue;
-              const od=BDEFS[ob.type];
-              const dx=gx2-ob.x,dz=gz2-ob.z,d=Math.sqrt(dx*dx+dz*dz);
-              if(d>6)continue;
-              if(ob.type==='roof'){if(Math.abs(ob.y-(bestY||ob.y))<0.5&&d<bestDist){bestY=ob.y+def2.h/2;bestDist=d;}}
-              else{const topY=ob.y+od.h/2;if(bestY===null||topY>bestY){bestY=topY;bestDist=d;}}
-            }
-            targetY=(bestY!==null?bestY:gy2+3)+def2.h/2;
-
-          }else if(isWall2){
-            const cands=[gy2+def2.h/2];
-            for(const ob of placed){
-              if(ob===b)continue;
-              const isF=ob.type==='floor'||ob.type==='floor_stone'||ob.type==='platform';
-              const isSolidW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal';
-              if(!isF&&!isSolidW)continue;
-              const od=BDEFS[ob.type];
-              const dx=gx2-ob.x,dz=gz2-ob.z,d=Math.sqrt(dx*dx+dz*dz);
-              const limit=isSolidW?od.w+0.8:6;
-              if(d>limit)continue;
-              cands.push(ob.y+od.h/2+def2.h/2);
-            }
-            let bestC=cands[0],bestD=999;
-            for(const cy of cands){const d=Math.abs(cy-camera.position.y);if(d<bestD){bestD=d;bestC=cy;}}
-            targetY=bestC;
           }
-
           ghostMesh.position.set(gx2,targetY,gz2);
           ghostMesh.rotation.y=(def2&&def2.snap)?snappedRy2:yaw;
         }
@@ -2357,7 +1539,6 @@ function gameLoop(){
       }
       tHPEl.style.display='none';
     }
-    if(now-lastInvSave>5000){lastInvSave=now;saveInv(roomId);} // save inv for ALL players every 5s
     if(now-lastSync>100){
       lastSync=now;
       if(isHost){
@@ -2372,33 +1553,7 @@ function gameLoop(){
   }
   const ft=now*0.003;
   fireLights.forEach(fl=>{const f=0.7+Math.sin(ft*7+fl.base)*0.2+Math.sin(ft*13)*0.1;fl.light.intensity=fl.base*f;if(fl.mesh){fl.mesh.scale.y=0.85+Math.sin(ft*9)*0.18;fl.mesh.scale.x=0.9+Math.sin(ft*6)*0.12;}if(fl.innerMesh)fl.innerMesh.scale.y=0.8+Math.sin(ft*11)*0.22;});
-  for(const[pid,rp]of Object.entries(remPlayers)){
-    rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);
-    rp.mesh.rotation.y=rp.yaw+Math.PI;
-    // Animate remote player limbs based on movement
-    if(!rp._legPh)rp._legPh=0;
-    const rpMoving=rp._prevX!==undefined&&(Math.abs(rp.x-rp._prevX)>0.001||Math.abs(rp.z-rp._prevZ)>0.001);
-    if(rpMoving)rp._legPh+=dt*8;
-    rp._prevX=rp.x;rp._prevZ=rp.z;
-    const rsw=Math.sin(rp._legPh);
-    rp.mesh.children.forEach(c=>{
-      if(c.name==='legL'){
-        c.rotation.x=rpMoving?rsw*0.55:0;
-        if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?Math.max(0,rsw*0.45):0;
-      }else if(c.name==='legR'){
-        c.rotation.x=rpMoving?-rsw*0.55:0;
-        if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?Math.max(0,-rsw*0.45):0;
-      }else if(c.name==='armL'){
-        c.rotation.x=rpMoving?-rsw*0.5:0;
-        if(c.userData.elbow)c.userData.elbow.rotation.x=rpMoving?Math.max(0,-rsw*0.3):0;
-      }else if(c.name==='armR'){
-        c.rotation.x=rpMoving?rsw*0.5:0;
-        if(c.userData.elbow)c.userData.elbow.rotation.x=rpMoving?Math.max(0,rsw*0.3):0;
-      }
-    });
-    const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);
-    if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';
-  }
+  for(const[pid,rp]of Object.entries(remPlayers)){rp.mesh.position.set(rp.x,rp.y-0.8,rp.z);rp.mesh.rotation.y=rp.yaw+Math.PI;const p3=new THREE.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';}
   renderer.render(scene,camera);
 }
 
