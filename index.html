@@ -609,44 +609,101 @@ function updateGhost(){
   const snappedRy=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
 
   if(selBldType==='floor'||selBldType==='floor_stone'){
-    // Snap to same level as adjacent floors, or place on terrain
-    const sameY=getNearbyFloorBaseY(gx,gz);
-    const floorCenterY = sameY!==null ? sameY : gy+def.h/2;
-    ghostMesh.position.set(gx, floorCenterY, gz);
+    // Snap to same level as adjacent floors/roofs (multi-level support)
+    // First try exact floor neighbours
+    let sameY=getNearbyFloorBaseY(gx,gz);
+    // Also check if there's a roof nearby to place floor at roof level
+    if(sameY===null){
+      let bestRoof=null,bestDist=999;
+      for(const b of placed){
+        if(b.type!=='roof')continue;
+        const dx=gx-b.x,dz=gz-b.z;
+        const d=Math.sqrt(dx*dx+dz*dz);
+        if(d<BDEFS.roof.w*2.2&&d<bestDist){bestDist=d;bestRoof=b;}
+      }
+      if(bestRoof)sameY=bestRoof.y; // roof center Y = floor center Y at same level
+    }
+    const floorCenterY=sameY!==null?sameY:gy+def.h/2;
+    ghostMesh.position.set(gx,floorCenterY,gz);
     ghostMesh.rotation.y=0;
+
   }else if(selBldType==='roof'){
-    const nearbyY=getNearbyFloorY(gx,gz);
-    ghostMesh.position.set(gx,(nearbyY!==null?nearbyY+3:gy+3)+def.h/2,gz);
+    // 1. Check adjacent roofs first — same Y as them
+    let roofLevelY=null;
+    for(const b of placed){
+      if(b.type!=='roof')continue;
+      const dx=gx-b.x,dz=gz-b.z;
+      if(Math.sqrt(dx*dx+dz*dz)<BDEFS.roof.w*2.5){roofLevelY=b.y;break;}
+    }
+    if(roofLevelY!==null){
+      // Same level as adjacent roof — just snap grid
+      ghostMesh.position.set(gx,roofLevelY,gz);
+    }else{
+      // No adjacent roof — find top of nearest wall
+      let wallTopY=null;
+      for(const b of placed){
+        const isW=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window';
+        if(!isW)continue;
+        const dx=gx-b.x,dz=gz-b.z;
+        if(Math.sqrt(dx*dx+dz*dz)>6)continue;
+        const top=b.y+BDEFS[b.type].h/2;
+        if(wallTopY===null||top>wallTopY)wallTopY=top;
+      }
+      const baseY=wallTopY!==null?wallTopY:gy+3;
+      ghostMesh.position.set(gx,baseY+def.h/2,gz);
+    }
     ghostMesh.rotation.y=0;
+
   }else if(selBldType==='wall'||selBldType==='wall_stone'||selBldType==='wall_wood'||selBldType==='wall_metal'||selBldType==='wall_door'||selBldType==='wall_window'){
-    // Find nearest floor and snap wall to its edge
-    let bestFloor=null,bestDist=999;
+    // Find best base: floor surface OR top of existing wall (for stacking)
+    let bestBase=null,bestBaseY=-9999,bestDist=999;
+
+    // Check floors/platforms as base
     for(const b of placed){
       if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='platform')continue;
+      const bd=BDEFS[b.type];
       const dx=gx-b.x,dz=gz-b.z;
-      const dist=Math.sqrt(dx*dx+dz*dz);
-      if(dist<bestDist){bestDist=dist;bestFloor=b;}
+      const d=Math.sqrt(dx*dx+dz*dz);
+      if(d>6)continue;
+      const surfY=b.y+bd.h/2;
+      if(surfY>bestBaseY){bestBaseY=surfY;bestBase={b,surfY};}
     }
-    let wx=gx,wz=gz,wallY=gy;
-    if(bestFloor){
-      const fd=BDEFS[bestFloor.type];
-      const cos=Math.cos(-bestFloor.ry),sin=Math.sin(-bestFloor.ry);
-      const dx=gx-bestFloor.x,dz=gz-bestFloor.z;
-      const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
-      // Snap to nearest edge of floor if within range
-      const halfW=fd.w/2,halfD=fd.d/2;
-      if(Math.abs(lx)<=halfW+1.5&&Math.abs(lz)<=halfD+1.5){
-        wallY=bestFloor.y+fd.h/2;
-        // Clamp to edge
-        const clampX=Math.max(-halfW,Math.min(halfW,lx));
-        const clampZ=Math.max(-halfD,Math.min(halfD,lz));
-        // Convert back to world coords
-        const wcos=Math.cos(bestFloor.ry),wsin=Math.sin(bestFloor.ry);
-        wx=bestFloor.x+wcos*clampX-wsin*clampZ;
-        wz=bestFloor.z+wsin*clampX+wcos*clampZ;
+
+    // Check top of walls (for stacking walls vertically)
+    for(const b of placed){
+      const isWall=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window';
+      if(!isWall)continue;
+      const bd=BDEFS[b.type];
+      const dx=gx-b.x,dz=gz-b.z;
+      const d=Math.sqrt(dx*dx+dz*dz);
+      if(d>bd.w+0.5)continue; // must be very close horizontally
+      const wallTopY=b.y+bd.h/2;
+      // Only use wall-top if it's higher than any floor base found
+      if(wallTopY>bestBaseY){bestBaseY=wallTopY;bestBase={b,surfY:wallTopY};}
+    }
+
+    let wx=gx,wz=gz,wallBaseY=gy;
+    if(bestBase){
+      wallBaseY=bestBase.surfY;
+      // If base is a floor — snap to its edge
+      const b=bestBase.b;
+      if(b.type==='floor'||b.type==='floor_stone'||b.type==='platform'){
+        const fd=BDEFS[b.type];
+        const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
+        const dx=gx-b.x,dz=gz-b.z;
+        const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
+        const halfW=fd.w/2,halfD=fd.d/2;
+        if(Math.abs(lx)<=halfW+1.5&&Math.abs(lz)<=halfD+1.5){
+          const clampX=Math.max(-halfW,Math.min(halfW,lx));
+          const clampZ=Math.max(-halfD,Math.min(halfD,lz));
+          const wcos=Math.cos(b.ry),wsin=Math.sin(b.ry);
+          wx=b.x+wcos*clampX-wsin*clampZ;
+          wz=b.z+wsin*clampX+wcos*clampZ;
+        }
       }
+      // If stacking on a wall — keep same X/Z grid position
     }
-    ghostMesh.position.set(wx,wallY+def.h/2,wz);
+    ghostMesh.position.set(wx,wallBaseY+def.h/2,wz);
     ghostMesh.rotation.y=snappedRy;
   }else if(selBldType==='platform'){
     const nearbyY=getNearbyFloorY(gx,gz);
@@ -1607,7 +1664,6 @@ function gameLoop(){
     if(!buildMode){castRay();updTgt(tTree);}
     else{
       if(selBldType==='__move'&&movingBld!==-1){
-        // Update ghost to follow camera aim, using correct snapped position
         if(ghostMesh){
           const b=placed[movingBld];
           const def2=BDEFS[b.type];
@@ -1617,22 +1673,65 @@ function gameLoop(){
           let gx2=px2,gz2=pz2;
           if(def2&&def2.snap){gx2=snapG(px2,def2.w);gz2=snapG(pz2,def2.d);}
           const snappedRy2=Math.round(yaw/(Math.PI/2))*(Math.PI/2);
+          const gy2=getH(gx2,gz2);
+          let targetY=gy2+def2.h/2;
 
-          // Determine Y: use floor Y or terrain Y — same logic as updateGhost
-          const isFloor=(b.type==='floor'||b.type==='floor_stone');
-          let targetY;
-          if(isFloor){
-            const sameY=getNearbyFloorBaseY(gx2,gz2);
-            targetY=sameY!==null?sameY:getH(gx2,gz2)+def2.h/2;
-          }else{
-            const nearbyY=getNearbyFloorY(gx2,gz2);
-            const gy2=getH(gx2,gz2);
-            if(b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window'){
-              targetY=(nearbyY!==null?nearbyY:gy2)+def2.h/2;
-            }else{
-              targetY=(nearbyY!==null?nearbyY:gy2)+def2.h/2;
+          const isFloor2=(b.type==='floor'||b.type==='floor_stone');
+          const isRoof2=(b.type==='roof');
+          const isWall2=(b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window');
+
+          if(isFloor2){
+            // Snap to adjacent floor/roof level
+            let sameY=null,bestDist=999;
+            for(const ob of placed){
+              if(ob===b)continue;
+              if(ob.type!=='floor'&&ob.type!=='floor_stone'&&ob.type!=='roof')continue;
+              const dx=gx2-ob.x,dz=gz2-ob.z;
+              const d=Math.sqrt(dx*dx+dz*dz);
+              if(d<BDEFS[ob.type==='roof'?'roof':'floor'].w*2.2&&d<bestDist){bestDist=d;sameY=ob.y;}
             }
+            targetY=sameY!==null?sameY:gy2+def2.h/2;
+
+          }else if(isRoof2){
+            // Roof: snap to top of nearest wall group, or adjacent roof level
+            let bestY=null,bestDist=999;
+            for(const ob of placed){
+              if(ob===b)continue;
+              const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||ob.type==='wall_window';
+              const isF=ob.type==='floor'||ob.type==='floor_stone';
+              if(!isW&&!isF&&ob.type!=='roof')continue;
+              const od=BDEFS[ob.type];
+              const dx=gx2-ob.x,dz=gz2-ob.z;
+              const d=Math.sqrt(dx*dx+dz*dz);
+              if(d>6)continue;
+              if(ob.type==='roof'){
+                if(Math.abs(ob.y-(bestY||ob.y))<0.5&&d<bestDist){bestY=ob.y+def2.h/2;bestDist=d;}
+              }else{
+                const topY=ob.y+od.h/2;
+                if(bestY===null||topY>bestY){bestY=topY;bestDist=d;}
+              }
+            }
+            targetY=(bestY!==null?bestY:gy2+3)+def2.h/2;
+
+          }else if(isWall2){
+            // Wall: find highest floor surface or wall top nearby
+            let bestBaseY=-9999;
+            for(const ob of placed){
+              if(ob===b)continue;
+              const isF=ob.type==='floor'||ob.type==='floor_stone'||ob.type==='platform';
+              const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||ob.type==='wall_window';
+              if(!isF&&!isW)continue;
+              const od=BDEFS[ob.type];
+              const dx=gx2-ob.x,dz=gz2-ob.z;
+              const d=Math.sqrt(dx*dx+dz*dz);
+              const limit=isW?od.w+0.5:6;
+              if(d>limit)continue;
+              const surfY=ob.y+od.h/2;
+              if(surfY>bestBaseY)bestBaseY=surfY;
+            }
+            targetY=(bestBaseY>-9999?bestBaseY:gy2)+def2.h/2;
           }
+
           ghostMesh.position.set(gx2,targetY,gz2);
           ghostMesh.rotation.y=(def2&&def2.snap)?snappedRy2:yaw;
         }
