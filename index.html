@@ -409,7 +409,7 @@ async function announceRoom(rid,nick,count,offline=false,peerId=''){
   try{
     const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
     cache[rid]=entry;
-    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>7*86400000)delete cache[k];});
+    Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>2*3600*1000)delete cache[k];});
     localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
   try{
@@ -419,7 +419,7 @@ async function announceRoom(rid,nick,count,offline=false,peerId=''){
       if(r.ok){const d=await r.json();current=(d&&(d.rooms||d))||{};}
     }catch(e){}
     current[rid]=entry;
-    Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>7*86400000)delete current[k];});
+    Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>2*3600*1000)delete current[k];});
     await apiFetch(BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(current)});
   }catch(e){console.log('jsonbin write failed:',e.message||e);}
 }
@@ -1955,53 +1955,30 @@ function setupConn(conn){
 
 function setupPeer(cb){
   if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  let opened=false;
+  let done=false;
+  function finish(id){if(done)return;done=true;clearTimeout(fallback);myId=id;if(cb)cb(id);}
 
-  // Fallback: if PeerJS doesn't open in 5s — run in solo/offline mode
   const fallback=setTimeout(()=>{
-    if(!opened){
-      console.warn('[PeerJS] server timeout — running in solo mode');
-      myId='solo-'+Math.random().toString(36).slice(2,8);
-      if(cb)cb(myId);
-    }
+    console.warn('[PeerJS] timeout — solo mode');
+    finish('solo-'+Math.random().toString(36).slice(2,8));
   },3000);
 
   try{
-    myPeer=new Peer({
-      config:{iceServers:[
-        {urls:'stun:stun.l.google.com:19302'},
-        {urls:'stun:stun1.l.google.com:19302'},
-      ]},
-      debug:0
-    });
-    myPeer.on('open',rid=>{
-      opened=true;
-      clearTimeout(fallback);
-      myId=rid;
-      console.log('[PeerJS] open, peerId=',rid);
-      if(cb)cb(rid);
-    });
-    myPeer.on('connection',conn=>{setupConn(conn);});
+    myPeer=new Peer({config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]},debug:0});
+    myPeer.on('open',rid=>{console.log('[PeerJS] open',rid);finish(rid);});
+    myPeer.on('connection',conn=>setupConn(conn));
     myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
     myPeer.on('error',err=>{
       console.warn('[PeerJS] error:',err.type);
-      if(!opened){
-        opened=true;
-        clearTimeout(fallback);
-        myId='solo-'+Math.random().toString(36).slice(2,8);
-        if(cb)cb(myId);
-      }
       if(err.type==='peer-unavailable'){
         setStatus('❌ Хост офлайн або ID не існує.');
         document.getElementById('createBtn').disabled=false;
         if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
+      }else{
+        finish('solo-'+Math.random().toString(36).slice(2,8)); // silent fallback
       }
     });
-  }catch(e){
-    clearTimeout(fallback);
-    myId='solo-'+Math.random().toString(36).slice(2,8);
-    if(cb)cb(myId);
-  }
+  }catch(e){finish('solo-'+Math.random().toString(36).slice(2,8));}
 }
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
 async function refreshRooms(){
@@ -2009,8 +1986,8 @@ async function refreshRooms(){
   let rooms={};
   try{rooms=await fetchRooms();}catch(e){rooms=_local;}
   const now=Date.now();
-  // Show ALL rooms from past 30 days (not just 7)
-  const all=Object.entries(rooms).filter(([,r])=>r&&r.nick&&now-(r.ts||0)<30*24*3600*1000);
+  // Show only rooms from last 2 hours
+  const all=Object.entries(rooms).filter(([,r])=>r&&r.nick&&now-(r.ts||0)<2*3600*1000);
   const list=document.getElementById("roomList");
   if(!all.length){
     list.innerHTML="<div style='padding:14px;text-align:center;color:#555'>Немає кімнат 🌲<br><span style='font-size:10px'>Створи кімнату або введи ID вручну</span></div>";
