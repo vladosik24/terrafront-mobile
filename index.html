@@ -726,29 +726,22 @@ clientConns[conn.peer]=conn;
 conn.on('data',data=>{handleMsg(conn.peer,typeof data==='string'?data:JSON.stringify(data));});
 conn.on('close',()=>{handleMsg(conn.peer,JSON.stringify({type:'bye'}));delete clientConns[conn.peer];updPC();});
 conn.on('error',()=>{delete clientConns[conn.peer];updPC();});});}
-function setupPeer(id,cb){if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-let done=false;
-function finish(rid){if(done)return;done=true;clearTimeout(timer);myId=rid;cb(rid);}
-const configs=[{host:'0.peerjs.com',port:443,path:'/',secure:true,key:'peerjs'},{host:'peerjs.fly.dev',port:443,path:'/',secure:true},];
-let attempt=0;
-function tryNext(){if(done)return;
-if(attempt>=configs.length){CW('[Peer] all servers failed, solo mode');
-finish('solo-'+MR().toString(36).slice(2,8));
-return;}
+function setupPeer(id,cb){
 if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-const cfg=configs[attempt++];
-CL('[Peer] trying',cfg.host);
-try{myPeer=new Peer(id,{...cfg,debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'},]}});
-myPeer.on('open',rid=>{CL('[Peer] open',rid);finish(rid);});
-myPeer.on('connection',conn=>setupConn(conn));
-myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
-myPeer.on('error',err=>{CW('[Peer] error',err.type,'on',cfg.host);
-if(err.type==='peer-unavailable'){setStatus('❌ Хост офлайн або ID не існує.');
-GI('createBtn').disabled=false;
-if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}}else if(!done){clearTimeout(timer);
-timer=setTimeout(tryNext,100);}});}catch(e){setTimeout(tryNext,100);}
-timer=setTimeout(tryNext,4000);}
-let timer=setTimeout(tryNext,0);}
+// Try PeerJS in background for multiplayer, but start game immediately with local ID
+myId=id||('p-'+MR().toString(36).slice(2,10));
+setTimeout(()=>cb(myId),0);
+// Attempt real PeerJS connection in background (won't block game)
+try{
+const p=new Peer(id,{host:'0.peerjs.com',port:443,path:'/',secure:true,key:'peerjs',debug:0,
+config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]}});
+p.on('open',rid=>{myId=rid;myPeer=p;CL('[Peer] connected',rid);});
+p.on('connection',conn=>setupConn(conn));
+p.on('disconnected',()=>{try{p.reconnect();}catch(e){}});
+p.on('error',err=>{CW('[Peer] bg error',err.type);
+if(err.type==='peer-unavailable'){setStatus('❌ Хост офлайн.');GI('createBtn').disabled=false;if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}}});
+}catch(e){CW('[Peer] init failed',e);}
+}
 function setStatus(msg){GI('lbStatus').textContent=msg;}
 async function refreshRooms(){setStatus("🔄 Оновлення...");
 let rooms={};
