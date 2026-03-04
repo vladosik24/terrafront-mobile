@@ -332,15 +332,18 @@ function saveInv(rid){
   try{
     const data=JSON.stringify(inv);
     if(rid)localStorage.setItem('tf_inv_'+rid,data);
-    localStorage.setItem('tf_inv_global_'+myNick,data);
+    // Always save to global key (no nick dependency)
+    localStorage.setItem('tf_inv_global',data);
+    if(myNick)localStorage.setItem('tf_inv_global_'+myNick,data);
   }catch(e){}
 }
 function loadInv(rid){
   try{
-    // Priority: per-room → global by nick
+    // Priority: per-room → global (no nick) → global by nick
     const perRoom=rid?localStorage.getItem('tf_inv_'+rid):null;
-    const global=localStorage.getItem('tf_inv_global_'+myNick);
-    const src=perRoom||global;
+    const global=localStorage.getItem('tf_inv_global');
+    const byNick=myNick?localStorage.getItem('tf_inv_global_'+myNick):null;
+    const src=perRoom||byNick||global;
     if(src){
       const d=JSON.parse(src);
       Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});
@@ -1303,13 +1306,9 @@ function takeDmg(d){if(isDead)return;playerHP=Math.max(0,playerHP-d);updHP();sho
 function eatFood(){if(inv.food<=0){showFloat('❌ Немає їжі');return;}inv.food--;hunger=Math.min(100,hunger+35);playerHP=Math.min(maxHP,playerHP+15);updHP();showFloat('🍖 +15 HP');renderInv();}
 function die(){
   isDead=true;
-  // Snapshot and save inventory BEFORE any changes — persists through reload
-  const invSnapshot=JSON.stringify(inv);
-  try{
-    if(roomId)localStorage.setItem('tf_inv_'+roomId,invSnapshot);
-    localStorage.setItem('tf_inv_global_'+myNick,invSnapshot);
-  }catch(e){}
-  // Create drop for others to loot (player keeps their inv)
+  // Save full inventory before death — persists through reload
+  saveInv(roomId);
+  // Create drop for others to loot (player keeps inv on respawn)
   const dropItems=[];
   Object.entries(inv).forEach(([k,v])=>{if(v>0)dropItems.push({k,v});});
   if(dropItems.length){
@@ -1665,7 +1664,7 @@ async function refreshRooms(){
 }
 function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}document.getElementById('createBtn').disabled=false;}
 
-function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSaveInt);window._worldSaveInt=setInterval(()=>{if(isHost){saveWorld(id);saveInv(id);}},20000);}
+function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSaveInt);window._worldSaveInt=setInterval(()=>{saveInv(id);if(isHost)saveWorld(id);},15000);}
 
 function createRoom(){
   resetNet();
@@ -1742,6 +1741,7 @@ function joinRoom(id,hostNick){
       setStatus('✅ Підключено до '+id+'!');
       hostConn.send({type:'hello',nick:myNick,char:myChar});
       loadInv(id);renderInv();
+      startAutoSave(id);
       startGame();
     });
     hostConn.on('data',data=>{
@@ -1848,8 +1848,8 @@ function exitToLobby(){
     });
   }
   broadcast({type:'bye'});
+  saveInv(roomId); // save BEFORE resetNet clears roomId
   if(isHost){clearInterval(announceInt);if(window._worldSaveInt)clearInterval(window._worldSaveInt);saveWorld(roomId);removeRoom(roomId);}
-  saveInv(roomId);
   resetNet();
   document.getElementById('game').style.display='none';document.getElementById('lobby').style.display='flex';
   if(myMesh){scene.remove(myMesh);myMesh=null;}
