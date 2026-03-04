@@ -527,7 +527,7 @@ const BDEFS={
   wall_door:  {cost:{wood:5,stone:2},   w:3,h:3,d:0.3,snap:true,isDoor:true},
   wall_window:{cost:{wood:2,stone:2},   w:3,h:3,d:0.3,snap:true,isWindow:true},
   roof:       {cost:{wood:6,stone:1},   w:3,h:0.4,d:3,snap:true},
-  stairs:     {cost:{wood:4,stone:1},   w:1.5,h:2,d:3,isStairs:true},
+  stairs:     {cost:{wood:4,stone:1},   w:1.5,h:3.5,d:3.5,isStairs:true},
   platform:   {cost:{wood:6},           w:6,h:0.3,d:1.5,snap:true},
   tower:      {cost:{wood:6,stone:8},   w:2,h:6,d:2},
   fence:      {cost:{wood:2},           w:2,h:1,d:0.15},
@@ -653,9 +653,19 @@ function updateGhost(){
     ghostMesh.position.set(gx,nearbyY!==null?nearbyY:gy+def.h/2,gz);
     ghostMesh.rotation.y=snappedRy;
   }else if(selBldType==='stairs'){
-    let stTop=null,stDist=999;
-    for(const b of placed){if(b.type!=='stairs')continue;const d2=Math.sqrt((px-b.x)**2+(pz-b.z)**2);if(d2<4&&d2<stDist){stDist=d2;stTop=b.y+BDEFS.stairs.h/2;}}
-    ghostMesh.position.set(px,(stTop!==null?stTop+BDEFS.stairs.h/2:gy+BDEFS.stairs.h/2),pz);
+    const sd=BDEFS.stairs;
+    // Find the highest floor/roof/platform surface under or near cursor
+    let bestSurfY=-9999,found=false;
+    for(const b of placed){
+      if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;
+      const def2=BDEFS[b.type];
+      const dx=px-b.x,dz=pz-b.z;
+      if(Math.abs(dx)>def2.w/2+1.5||Math.abs(dz)>def2.d/2+1.5)continue;
+      const surfY=b.y+def2.h/2;
+      if(surfY>bestSurfY){bestSurfY=surfY;found=true;}
+    }
+    const baseY=found?bestSurfY:gy;
+    ghostMesh.position.set(px,baseY+sd.h/2,pz);
     ghostMesh.rotation.y=yaw;
   }else{
     const nearbyY=getNearbyFloorY(gx,gz);
@@ -995,8 +1005,27 @@ const charSpd=()=>charCfg().speed;const charDmg=()=>charCfg().dmg;
 function updHP(){const p=(playerHP/maxHP)*100;document.getElementById('hpBar').style.width=p+'%';document.getElementById('hpBar').style.background=p>60?'#4caf50':p>30?'#ff9800':'#e53935';document.getElementById('hpNum').textContent=Math.max(0,Math.round(playerHP));document.getElementById('hunBar').style.width=hunger+'%';}
 function takeDmg(d){if(isDead)return;playerHP=Math.max(0,playerHP-d);updHP();showFloat('💔 -'+d);if(playerHP<=0)die();}
 function eatFood(){if(inv.food<=0){showFloat('❌ Немає їжі');return;}inv.food--;hunger=Math.min(100,hunger+35);playerHP=Math.min(maxHP,playerHP+15);updHP();showFloat('🍖 +15 HP');renderInv();}
-function die(){isDead=true;const dropItems=[];Object.entries(inv).forEach(([k,v])=>{if(v>0){dropItems.push({k,v});inv[k]=0;}});if(dropItems.length){const dr={x:playerPos.x+Math.random()*2-1,z:playerPos.z+Math.random()*2-1,items:dropItems,id:'drop_'+Date.now()};drops.push(dr);spawnDropMesh(dr);broadcast({type:'drop',drop:dr});}document.getElementById('death').style.display='flex';}
-document.getElementById('respBtn').addEventListener('click',()=>{playerHP=maxHP;hunger=100;Object.keys(inv).forEach(k=>inv[k]=0);playerPos.set(Math.random()*20-10,5,Math.random()*20-10);playerVelY=0;isDead=false;document.getElementById('death').style.display='none';updHP();});
+function die(){
+  isDead=true;
+  const dropItems=[];
+  Object.entries(inv).forEach(([k,v])=>{if(v>0){dropItems.push({k,v});inv[k]=0;}});
+  // Save empty inventory immediately so reload doesn't restore pre-death items
+  saveInv(roomId);
+  if(dropItems.length){
+    const dr={x:playerPos.x+Math.random()*2-1,z:playerPos.z+Math.random()*2-1,items:dropItems,id:'drop_'+Date.now()};
+    drops.push(dr);spawnDropMesh(dr);broadcast({type:'drop',drop:dr});
+  }
+  document.getElementById('death').style.display='flex';
+}
+document.getElementById('respBtn').addEventListener('click',()=>{
+  playerHP=maxHP;hunger=100;
+  Object.keys(inv).forEach(k=>inv[k]=0);
+  saveInv(roomId); // save empty inv on respawn too
+  playerPos.set(Math.random()*20-10,5,Math.random()*20-10);
+  playerVelY=0;isDead=false;
+  document.getElementById('death').style.display='none';
+  updHP();renderInv();
+});
 function updHunger(dt){hunger=Math.max(0,hunger-dt*1.2);if(hunger<=0){playerHP=Math.max(0,playerHP-dt*2);updHP();if(playerHP<=0)die();}document.getElementById('hunBar').style.width=hunger+'%';}
 let fRAF=null;
 function showFloat(msg){const el=document.getElementById('float');el.textContent=msg;el.style.opacity='1';el.style.top='38%';cancelAnimationFrame(fRAF);const s=performance.now();(function rise(){const t=(performance.now()-s)/800;if(t<1){el.style.top=(38-t*9)+'%';fRAF=requestAnimationFrame(rise);}else el.style.opacity='0';})();}
