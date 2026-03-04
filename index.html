@@ -1955,37 +1955,52 @@ function setupConn(conn){
 
 function setupPeer(cb){
   if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  myPeer=new Peer({config:{iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]},debug:0});
-  const timeout=setTimeout(()=>{
-    setStatus('❌ PeerJS сервер не відповідає. Перевір інтернет.');
-    document.getElementById('createBtn').disabled=false;
-  },25000);
-  myPeer.on('open',rid=>{
-    clearTimeout(timeout);
-    myId=rid;
-    console.log('[PeerJS] open, peerId=',rid);
-    if(cb)cb(rid);
-  });
-  myPeer.on('connection',conn=>{
-    console.log('[PeerJS] incoming from',conn.peer);
-    setupConn(conn);
-  });
-  myPeer.on('disconnected',()=>{
-    console.log('[PeerJS] disconnected, reconnecting...');
-    try{myPeer.reconnect();}catch(e){}
-  });
-  myPeer.on('error',err=>{
-    clearTimeout(timeout);
-    console.error('[PeerJS] error:',err.type,err);
-    if(err.type==='peer-unavailable'){
-      setStatus('❌ Хост офлайн або ID не існує.');
-      document.getElementById('createBtn').disabled=false;
-      if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
-    }else{
-      setStatus('❌ Мережева помилка: '+err.type);
-      document.getElementById('createBtn').disabled=false;
+  let opened=false;
+
+  // Fallback: if PeerJS doesn't open in 5s — run in solo/offline mode
+  const fallback=setTimeout(()=>{
+    if(!opened){
+      console.warn('[PeerJS] server timeout — running in solo mode');
+      myId='solo-'+Math.random().toString(36).slice(2,8);
+      if(cb)cb(myId);
     }
-  });
+  },5000);
+
+  try{
+    myPeer=new Peer({
+      config:{iceServers:[
+        {urls:'stun:stun.l.google.com:19302'},
+        {urls:'stun:stun1.l.google.com:19302'},
+      ]},
+      debug:0
+    });
+    myPeer.on('open',rid=>{
+      opened=true;
+      clearTimeout(fallback);
+      myId=rid;
+      console.log('[PeerJS] open, peerId=',rid);
+      if(cb)cb(rid);
+    });
+    myPeer.on('connection',conn=>{setupConn(conn);});
+    myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
+    myPeer.on('error',err=>{
+      console.error('[PeerJS] error:',err.type);
+      if(!opened){
+        clearTimeout(fallback);
+        myId='solo-'+Math.random().toString(36).slice(2,8);
+        if(cb)cb(myId);
+      }
+      if(err.type==='peer-unavailable'){
+        setStatus('❌ Хост офлайн або ID не існує.');
+        document.getElementById('createBtn').disabled=false;
+        if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
+      }
+    });
+  }catch(e){
+    clearTimeout(fallback);
+    myId='solo-'+Math.random().toString(36).slice(2,8);
+    if(cb)cb(myId);
+  }
 }
 function setStatus(msg){document.getElementById('lbStatus').textContent=msg;}
 async function refreshRooms(){
