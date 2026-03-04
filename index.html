@@ -1937,7 +1937,7 @@ function gameLoop(){
     if(playerPos.y<=minY){playerPos.y=minY;if(playerVelY<0)playerVelY=0;isOnGround=true;}else if(playerPos.y<minY+0.05&&playerVelY<=0){playerPos.y=minY;playerVelY=0;isOnGround=true;}else isOnGround=false;
     if(camMode===1){const cx=playerPos.x+Math.sin(yaw)*CAM3P.z,cz=playerPos.z+Math.cos(yaw)*CAM3P.z;camera.position.set(cx,playerPos.y+CAM3P.y,cz);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.8,playerPos.z));}
     else if(camMode===2){camera.position.set(playerPos.x+Math.sin(yaw)*3.2,playerPos.y+1.4,playerPos.z+Math.cos(yaw)*3.2);camera.lookAt(new THREE.Vector3(playerPos.x,playerPos.y+0.7,playerPos.z));}
-    else{camera.position.set(playerPos.x,playerPos.y+1.65,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
+    else{camera.position.set(playerPos.x,playerPos.y+0.75,playerPos.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;}
     if(myMesh){
       myMesh.position.set(playerPos.x,playerPos.y-0.8,playerPos.z);
       myMesh.rotation.y=camMode===2?yaw:yaw+Math.PI;
