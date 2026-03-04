@@ -256,7 +256,7 @@ canvas{display:block;}
 <script>
 // ══ SAVED ROOMS ══
 function getSaved(){try{return JSON.parse(localStorage.getItem('tf_rooms')||'[]');}catch(e){return[];}}
-function saveRoom(id,nick){const r=getSaved().filter(x=>x.id!==id);r.unshift({id,nick,ts:Date.now()});localStorage.setItem('tf_rooms',JSON.stringify(r.slice(0,10)));}
+function saveRoom(id,nick,isOwn=false){const r=getSaved().filter(x=>x.id!==id);r.unshift({id,nick,ts:Date.now(),own:isOwn});localStorage.setItem('tf_rooms',JSON.stringify(r.slice(0,10)));}
 function delSaved(id){localStorage.setItem('tf_rooms',JSON.stringify(getSaved().filter(r=>r.id!==id)));}
 function renderSaved(){
   const rooms=getSaved(),sec=document.getElementById("savedSec"),list=document.getElementById("savedList");
@@ -266,8 +266,9 @@ function renderSaved(){
     const d=document.createElement("div");d.className="sr";
     const ago=Math.floor((Date.now()-r.ts)/60000);
     const agoStr=ago<60?ago+"хв":Math.floor(ago/60)+"год";
-    d.innerHTML="<div class='sri'><div class='srn'>🌲 "+r.nick+"'s кімната</div><div class='srid'>ID: "+r.id+" &middot; "+agoStr+" тому</div></div><button class='del'>🗑️</button>";
-    d.querySelector(".sri").onclick=()=>joinRoom(r.id,r.nick);
+    const isOwn=!!r.own;
+    d.innerHTML="<div class='sri'><div class='srn'>"+(isOwn?'🏠':'🌲')+" "+r.nick+"'s кімната</div><div class='srid'>ID: "+r.id+" &middot; "+agoStr+" тому</div></div><button class='del'>🗑️</button>";
+    d.querySelector(".sri").onclick=()=>isOwn?reopenMyRoom(r.id):joinRoom(r.id,r.nick);
     d.querySelector(".del").onclick=e=>{e.stopPropagation();delSaved(r.id);renderSaved();};
     list.appendChild(d);
   });
@@ -284,8 +285,24 @@ function loadWorld(rid){
   try{const s=localStorage.getItem('tf_world_'+rid);if(s){const d=JSON.parse(s);if(d&&d.buildings&&d.buildings.length)return d;}}catch(e){}
   return null;
 }
-function saveInv(rid){try{localStorage.setItem('tf_inv_'+rid,JSON.stringify(inv));}catch(e){}}
-function loadInv(rid){try{const s=localStorage.getItem('tf_inv_'+rid);if(s){const d=JSON.parse(s);Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});}}catch(e){}}
+function saveInv(rid){
+  try{
+    const data=JSON.stringify(inv);
+    // Save per-room
+    if(rid)localStorage.setItem('tf_inv_'+rid,data);
+    // Also save globally by player nick (persists across all rooms)
+    localStorage.setItem('tf_inv_global_'+myNick,data);
+  }catch(e){}
+}
+function loadInv(rid){
+  try{
+    // Try per-room first, then global fallback
+    const s=rid?localStorage.getItem('tf_inv_'+rid):null;
+    const g=localStorage.getItem('tf_inv_global_'+myNick);
+    const src=s||g;
+    if(src){const d=JSON.parse(src);Object.keys(inv).forEach(k=>{if(d[k]!==undefined)inv[k]=d[k];});}
+  }catch(e){}
+}
 
 // ══ CHARS ══
 let myChar='male';
@@ -1297,7 +1314,7 @@ function createRoom(){
       '✅ Кімната: <b style="color:#ffe082">'+roomId+'</b> '+
       '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+roomId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
       'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
-    saveRoom(roomId,myNick);
+    saveRoom(roomId,myNick,true);
     announceRoom(roomId,myNick,1,false);
     announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false),15000);
     startAutoSave(roomId);
@@ -1325,18 +1342,26 @@ function showRoomIdBanner(rid){
   banner.style.display='flex';
 }
 function joinRoom(id,hostNick){
-  resetNet();
   id=(id||'').trim().toLowerCase().replace(/\s+/g,'');
   if(!id){setStatus('❌ Введи ID кімнати');return;}
+
+  // If this is our own previously-created room — reopen as host
+  const savedRooms=getSaved();
+  const savedProfiles=JSON.parse(localStorage.getItem('tf_profile')||'{}');
+  const isMyRoom=savedRooms.some(r=>r.id===id&&r.nick===savedProfiles.nick);
+  if(isMyRoom||id===roomId){
+    reopenMyRoom(id);
+    return;
+  }
+
+  resetNet();
   roomId=id;
   setStatus('🔗 Підключення до: '+id);
   document.getElementById('createBtn').disabled=true;
   saveRoom(id,hostNick||'Хост');
-  // Use random client ID to avoid collisions
   const clientId='cl-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
-  setupPeer(clientId,myPeerId=>{
+  setupPeer(clientId,()=>{
     setStatus('⏳ Шукаємо хоста '+id+'...');
-    // Connect WITHOUT serialization:'json' — let PeerJS handle it natively
     hostConn=myPeer.connect(id,{reliable:true});
     let connected=false;
     const timeout=setTimeout(()=>{
@@ -1355,22 +1380,70 @@ function joinRoom(id,hostNick){
       startGame();
     });
     hostConn.on('data',data=>{
-      // PeerJS may deliver as object or string — normalize
       handleMsg(hostConn.peer, typeof data==='string'?data:JSON.stringify(data));
     });
     hostConn.on('close',()=>{
       addChat('🔌','Хост відключився — беремо управління...');
-      setStatus('👑 Хост пішов, стаєш хостом...');
       const savedRoomId=roomId;
-      setTimeout(()=>{
-        if(!isHost)becomeHost(savedRoomId);
-      },1000);
+      setTimeout(()=>{if(!isHost)becomeHost(savedRoomId);},1000);
     });
     hostConn.on('error',e=>{
       clearTimeout(timeout);
       setStatus('❌ Помилка: '+(e.type||e));
-      console.error('hostConn error',e);
+      document.getElementById('createBtn').disabled=false;
     });
+  });
+}
+
+function reopenMyRoom(id){
+  resetNet();
+  roomId=id;
+  isHost=true;
+  setStatus('⏳ Відкриваємо кімнату...');
+  document.getElementById('createBtn').disabled=true;
+
+  function startAsHost(actualId){
+    roomId=actualId;
+    document.getElementById('lbStatus').innerHTML=
+      '✅ Кімната: <b style="color:#ffe082">'+actualId+'</b> '+
+      '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+actualId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
+      'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
+    saveRoom(actualId,myNick,true);
+    announceRoom(actualId,myNick,1,false);
+    announceInt=setInterval(()=>announceRoom(actualId,myNick,1+Object.keys(clientConns).length,false),15000);
+    startAutoSave(actualId);
+    startGame();
+    loadInv(actualId);renderInv();
+    showRoomIdBanner(actualId);
+    addChat('🏠','Кімната відновлена: '+actualId);
+    const world=loadWorld(id); // always load from original id
+    if(world&&world.buildings&&world.buildings.length){
+      world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
+      showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
+    }
+  }
+
+  // Try to claim the original peer ID
+  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+  myPeer=new Peer(id);
+  myPeer.on('open',rid=>{myId=rid;startAsHost(rid);});
+  myPeer.on('connection',conn=>setupConn(conn));
+  myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
+  myPeer.on('error',err=>{
+    if(err.type==='unavailable-id'){
+      // Original ID taken — create new ID but keep world data from old ID
+      setStatus('⚠️ ID зайнятий, створюємо новий...');
+      if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+      const newId='tf-'+Math.random().toString(36).slice(2,9);
+      myPeer=new Peer(newId);
+      myPeer.on('open',rid=>{myId=rid;startAsHost(rid);});
+      myPeer.on('connection',conn=>setupConn(conn));
+      myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
+      myPeer.on('error',e2=>setStatus('❌ '+e2.type));
+    }else{
+      setStatus('❌ '+err.type);
+      document.getElementById('createBtn').disabled=false;
+    }
   });
 }
 function becomeHost(id){
@@ -1383,7 +1456,7 @@ function becomeHost(id){
   // Take over the original room ID so others can still connect
   setupPeer(id,()=>{
     setStatus('👑 Ти новий хост! ID: '+id);
-    saveRoom(id,myNick);
+    saveRoom(id,myNick,true);
     announceRoom(id,myNick,1+Object.keys(clientConns).length,false);
     announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false),15000);
     startAutoSave(id);
@@ -1467,7 +1540,7 @@ function toggleMinimap(){
   document.getElementById('mmClose').textContent=minimapVisible?'✕ карта':'🗺️ карта';
 }
 
-let lastT=performance.now(),lastSync=0,legPh=0,mmTick=0;
+let lastT=performance.now(),lastSync=0,lastInvSave=0,legPh=0,mmTick=0;
 function startGame(){
   const cfg=charCfg();maxHP=cfg.maxHP;playerHP=cfg.maxHP;
   playerPos.set(Math.random()*10-5,5,Math.random()*10-5);
@@ -1539,6 +1612,7 @@ function gameLoop(){
       }
       tHPEl.style.display='none';
     }
+    if(now-lastInvSave>5000){lastInvSave=now;saveInv(roomId);}
     if(now-lastSync>100){
       lastSync=now;
       if(isHost){
