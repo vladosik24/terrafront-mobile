@@ -1721,7 +1721,7 @@ function doAction(){
   }
   if(tTree){shake(tTree.group);const hits=inv.axe>0?2:1;tTree.hp-=hits;showFloat(inv.axe>0?'🪓 -'+hits:'🤜 -1');if(tTree.hp<=0){fellTree(tTree);if(Math.random()<0.1&&typeof startFire!=='undefined')startFire(tTree.x,tTree.z,tTree.group.position.y);}return;}
   if(tRock){shake(tRock.mesh);inv.stone+=1+(inv.axe>0?1:0);if(Math.random()<.15){inv.metal++;showFloat('🪨 +1 ⚙️');}else showFloat('🪨 +1');return;}
-  if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},15000);return;}
+  if(tPlant){tPlant.alive=false;tPlant.group.visible=false;inv.fiber+=1+Math.floor(Math.random()*2);showFloat('🌿 +волокно');setTimeout(()=>{if(tPlant){tPlant.alive=true;tPlant.group.visible=true;}},25000);return;}
   if(typeof nearWater!=='undefined'&&nearWater(playerPos.x,playerPos.z)){hunger=Math.min(100,hunger+30);playerHP=Math.min(maxHP,playerHP+5);updHP();showFloat('💧 +вода +30 голод');return;}
   showFloat('❌ Немає цілі');
 }
@@ -1955,11 +1955,11 @@ function setupConn(conn){
 
 function setupPeer(cb){
   if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  myPeer=new Peer(); // Always let PeerJS assign a random ID — never force a specific one
+  myPeer=new Peer({config:{iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]},debug:0});
   const timeout=setTimeout(()=>{
     setStatus('❌ PeerJS сервер не відповідає. Перевір інтернет.');
     document.getElementById('createBtn').disabled=false;
-  },15000);
+  },25000);
   myPeer.on('open',rid=>{
     clearTimeout(timeout);
     myId=rid;
@@ -2018,7 +2018,7 @@ async function refreshRooms(){
 }
 function resetNet(){isHost=false;if(hostConn){try{hostConn.close();}catch(e){}}hostConn=null;Object.values(clientConns).forEach(c=>{try{c.close();}catch(e){}});clientConns={};Object.keys(remPlayers).forEach(pid=>remRP(pid));if(announceInt){clearInterval(announceInt);announceInt=null;}if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}document.getElementById('createBtn').disabled=false;}
 
-function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSaveInt);window._worldSaveInt=setInterval(()=>{saveInv(id);if(isHost)saveWorld(id);},15000);}
+function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSaveInt);window._worldSaveInt=setInterval(()=>{saveInv(id);if(isHost)saveWorld(id);},25000);}
 
 function createRoom(){
   resetNet();
@@ -2074,28 +2074,15 @@ function joinRoom(id,hostNick){
   document.getElementById('createBtn').disabled=true;
   saveRoom(id,hostNick||'Хост');
 
-  // Look up the host's actual peer ID from JSONBin
-  fetchRooms().then(rooms=>{
-    const entry=rooms[id];
-    const peerId=entry&&entry.peerId;
-    if(!peerId){
-      setStatus('❌ Кімната не знайдена. Можливо хост офлайн.');
-      document.getElementById('createBtn').disabled=false;
-      return;
-    }
-    doConnect(peerId);
-  }).catch(()=>{
-    setStatus('❌ Помилка мережі. Перевір інтернет.');
-    document.getElementById('createBtn').disabled=false;
-  });
-
   function doConnect(peerId){
+    console.log('[join] connecting to peerId=',peerId,'roomId=',id);
     setupPeer(myPeerId=>{
-      setStatus('⏳ Підключення до хоста...');
+      console.log('[join] my peerId=',myPeerId);
+      setStatus('⏳ Підключення...');
       hostConn=myPeer.connect(peerId,{reliable:true});
       let connected=false;
       const timeout=setTimeout(()=>{
-        if(!connected){setStatus('❌ Хост не відповідає.');document.getElementById('createBtn').disabled=false;}
+        if(!connected){setStatus('❌ Хост не відповідає. Перевір чи хост онлайн.');document.getElementById('createBtn').disabled=false;}
       },12000);
       hostConn.on('open',()=>{
         clearTimeout(timeout);connected=true;isHost=false;
@@ -2115,6 +2102,17 @@ function joinRoom(id,hostNick){
       });
     });
   }
+
+  // Try to get peerId from JSONBin, fallback to using id directly as peerId
+  fetchRooms().then(rooms=>{
+    const entry=rooms[id];
+    const peerId=entry&&entry.peerId;
+    console.log('[join] JSONBin entry=',entry,'peerId=',peerId);
+    doConnect(peerId||id); // fallback: treat roomId as peerId (old rooms)
+  }).catch(err=>{
+    console.log('[join] JSONBin failed, trying direct:',err);
+    doConnect(id); // fallback: treat roomId as peerId
+  });
 }
 
 function reopenMyRoom(id){
