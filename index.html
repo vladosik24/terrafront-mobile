@@ -1964,7 +1964,7 @@ function setupPeer(cb){
       myId='solo-'+Math.random().toString(36).slice(2,8);
       if(cb)cb(myId);
     }
-  },5000);
+  },3000);
 
   try{
     myPeer=new Peer({
@@ -1984,8 +1984,9 @@ function setupPeer(cb){
     myPeer.on('connection',conn=>{setupConn(conn);});
     myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
     myPeer.on('error',err=>{
-      console.error('[PeerJS] error:',err.type);
+      console.warn('[PeerJS] error:',err.type);
       if(!opened){
+        opened=true;
         clearTimeout(fallback);
         myId='solo-'+Math.random().toString(36).slice(2,8);
         if(cb)cb(myId);
