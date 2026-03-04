@@ -198,8 +198,11 @@ canvas{display:block;}
     <div class="bs"     data-b="campfire"    onclick="selBuild('campfire')"   ><span>🔥</span><div class="bn">Вогнище</div></div>
     <div class="bs"     data-b="bed"         onclick="selBuild('bed')"        ><span>🛏️</span><div class="bn">Ліжко</div></div>
     <div class="bs"     data-b="chest"       onclick="selBuild('chest')"      ><span>📦</span><div class="bn">Скриня</div></div>
+    <div class="bs"     data-b="furnace"     onclick="selBuild('furnace')"    ><span>🏭</span><div class="bn">Піч</div></div>
+    <div class="bs"     data-b="farm"        onclick="selBuild('farm')"       ><span>🌾</span><div class="bn">Ферма</div></div>
+    <div class="bs"     data-b="bookshelf"   onclick="selBuild('bookshelf')"  ><span>📚</span><div class="bn">Бібліот.</div></div>
     <div class="bs"     data-b="table"       onclick="selBuild('table')"      ><span>🪑</span><div class="bn">Стіл</div></div>
-    <div class="bs"     data-b="shelf"       onclick="selBuild('shelf')"      ><span>📚</span><div class="bn">Полиця</div></div>
+    <div class="bs"     data-b="shelf"       onclick="selBuild('shelf')"      ><span>🗄️</span><div class="bn">Полиця</div></div>
     <div class="bs"     data-b="chair"       onclick="selBuild('chair')"      ><span>🛋️</span><div class="bn">Крісло</div></div>
     <div class="bs"     data-b="wardrobe"    onclick="selBuild('wardrobe')"   ><span>🚪</span><div class="bn">Шафа</div></div>
     <div class="bs"     data-b="desk"        onclick="selBuild('desk')"       ><span>🖥️</span><div class="bn">Письм.стіл</div></div>
@@ -250,7 +253,47 @@ canvas{display:block;}
       <button class="lbCancel" onclick="closeLockPop()">✕ Скасувати</button>
     </div>
   </div>
-</div>
+  <!-- CHEST POPUP -->
+  <div id="chestPop" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
+    <div style="background:#1a1a2e;border:1px solid #ffe082;border-radius:14px;padding:16px;min-width:280px;max-width:340px;width:90%;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:#ffe082;font-weight:bold;font-size:13px;">📦 Скриня</span>
+        <button onclick="closeChest()" style="background:#c62828;border:none;border-radius:6px;color:#fff;padding:2px 10px;cursor:pointer;font-size:13px;">✕</button>
+      </div>
+      <div id="chestGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;min-height:48px;"></div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="chestDeposit()" style="flex:1;background:#388e3c;border:none;border-radius:6px;color:#fff;padding:7px;font-size:11px;cursor:pointer;">⬇️ Покласти все</button>
+        <button onclick="chestWithdraw()" style="flex:1;background:#1976d2;border:none;border-radius:6px;color:#fff;padding:7px;font-size:11px;cursor:pointer;">⬆️ Забрати все</button>
+      </div>
+    </div>
+  </div>
+  <!-- FURNACE POPUP -->
+  <div id="furnacePop" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
+    <div style="background:#1a1208;border:1px solid #ff6f00;border-radius:14px;padding:16px;min-width:260px;width:90%;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:#ff6f00;font-weight:bold;font-size:13px;">🏭 Піч — Плавка</span>
+        <button onclick="closeFurnace()" style="background:#c62828;border:none;border-radius:6px;color:#fff;padding:2px 10px;cursor:pointer;font-size:13px;">✕</button>
+      </div>
+      <div id="furnaceStatus" style="font-size:10px;color:#aaa;text-align:center;min-height:14px;"></div>
+      <button onclick="furnaceSmelt('stone','metal',3,1,2)" style="background:#455a64;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🪨 Камінь×3 + 🖤 Вугілля×1 → ⚙️ Метал×2</button>
+      <button onclick="furnaceSmelt('wood','coal',2,0,3)"   style="background:#4e342e;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🪵 Дерево×2 → 🖤 Вугілля×3</button>
+      <button onclick="furnaceSmelt('meat','food',1,1,2)"   style="background:#6d4c41;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🥩 Мясо×1 + 🖤 Вугілля×1 → 🍖 Їжа×2</button>
+      <button onclick="furnaceSmelt('fiber','fiber',4,1,6)"  style="background:#4a148c;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;text-align:left;">🌿 Волокно×4 + 🖤 Вугілля×1 → 🌿 Волокно×6 (очищено)</button>
+    </div>
+  </div>
+  <!-- FARM POPUP -->
+  <div id="farmPop" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;flex-direction:column;">
+    <div style="background:#0a1a0a;border:1px solid #81c784;border-radius:14px;padding:16px;min-width:240px;width:90%;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:#81c784;font-weight:bold;font-size:13px;">🌾 Ферма</span>
+        <button onclick="closeFarm()" style="background:#c62828;border:none;border-radius:6px;color:#fff;padding:2px 10px;cursor:pointer;font-size:13px;">✕</button>
+      </div>
+      <div id="farmStatus" style="font-size:11px;color:#aaa;text-align:center;min-height:16px;"></div>
+      <button onclick="farmPlant('wheat')"  style="background:#558b2f;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;">🌱 Посіяти пшеницю (fiber×1) → 🍖 їжа×3</button>
+      <button onclick="farmPlant('veggie')" style="background:#1b5e20;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;">🥕 Посіяти овочі (fiber×2) → 🍖 їжа×5 + fiber×2</button>
+      <button onclick="farmHarvest()" id="farmHarvestBtn" style="background:#f57f17;border:none;border-radius:8px;color:#fff;padding:9px;font-size:11px;cursor:pointer;">🌾 Зібрати врожай</button>
+    </div>
+  </div>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
@@ -535,17 +578,20 @@ const BDEFS={
   scaffold:   {cost:{wood:8},           w:2,h:4,d:0.4},
   campfire:   {cost:{wood:3},           w:1,h:0.6,d:1,interact:true,noCollide:true},
   bed:        {cost:{wood:6,fiber:4},   w:1,h:0.8,d:2,interact:true},
-  chest:      {cost:{wood:4,metal:2},   w:0.8,h:0.6,d:0.6},
+  chest:      {cost:{wood:6,metal:2},   w:1,h:0.8,d:0.7,interact:true},
+  furnace:    {cost:{stone:8,metal:2},  w:1,h:1.2,d:1,interact:true},
+  farm:       {cost:{wood:4,fiber:2},   w:2,h:0.2,d:2,interact:true,noCollide:true},
   table:      {cost:{wood:4},           w:1.2,h:0.8,d:0.8},
   shelf:      {cost:{wood:3},           w:1.4,h:1.2,d:0.25,noCollide:true},
+  bookshelf:  {cost:{wood:5,fiber:3},   w:1.2,h:2,d:0.3,interact:true},
   chair:      {cost:{wood:3},           w:0.6,h:0.9,d:0.6},
-  wardrobe:   {cost:{wood:6,metal:1},   w:0.9,h:2.0,d:0.55},
-  desk:       {cost:{wood:5,metal:1},   w:1.4,h:0.85,d:0.7},
-  sofa:       {cost:{wood:4,fiber:6},   w:1.8,h:0.8,d:0.8},
-  workbench:  {cost:{wood:6,stone:2},   w:1.5,h:1,d:1},
-  anvil:      {cost:{metal:6,stone:3},  w:0.7,h:0.7,d:0.5},
-  barrel:     {cost:{wood:4,metal:1},   w:0.6,h:1,d:0.6},
-  well:       {cost:{stone:8,wood:4},   w:1.5,h:2,d:1.5,noCollide:true},
+  wardrobe:   {cost:{wood:6,metal:1},   w:0.9,h:2.0,d:0.55,interact:true},
+  desk:       {cost:{wood:5,metal:1},   w:1.4,h:0.85,d:0.7,interact:true},
+  sofa:       {cost:{wood:4,fiber:6},   w:1.8,h:0.8,d:0.8,interact:true},
+  workbench:  {cost:{wood:6,stone:2},   w:1.5,h:1,d:1,interact:true},
+  anvil:      {cost:{metal:6,stone:3},  w:0.7,h:0.7,d:0.5,interact:true},
+  barrel:     {cost:{wood:4,metal:1},   w:0.6,h:1,d:0.6,interact:true},
+  well:       {cost:{stone:8,wood:4},   w:1.5,h:2,d:1.5,noCollide:true,interact:true},
   torch:      {cost:{wood:1,fiber:1},   w:0.1,h:0.8,d:0.1,noCollide:true},
   lamp:       {cost:{metal:2,fiber:1},  w:0.15,h:2.5,d:0.15,noCollide:true},
 };
@@ -768,13 +814,130 @@ function tryInteract(){
     return true;
   }
   if(b.type==='wall_window'){b.mesh.userData.winOpen=!b.mesh.userData.winOpen;if(b.mesh.userData.winPivot)b.mesh.userData.winPivot.rotation.y=b.mesh.userData.winOpen?-Math.PI/2:0;showFloat(b.mesh.userData.winOpen?'🪟 Відчинено':'🪟 Зачинено');return true;}
-  if(b.type==='bed'){playerHP=Math.min(maxHP,playerHP+30);hunger=Math.min(100,hunger+10);updHP();showFloat('🛏️ +30 HP');return true;}
+  if(b.type==='bed'){playerHP=Math.min(maxHP,playerHP+30);hunger=Math.min(100,hunger+10);updHP();showFloat('🛏️ +30 HP, +10 голод');return true;}
   if(b.type==='campfire'){if(inv.meat>=1&&inv.coal>=1){inv.meat--;inv.coal--;playerHP=Math.min(maxHP,playerHP+40);hunger=Math.min(100,hunger+50);updHP();renderInv();showFloat('🥩 +40 HP');}else showFloat("❌ Потрібно мясо + вугілля");return true;}
-  if(b.type==='workbench'){showFloat('🔧 Верстак активовано');return true;}
-  if(b.type==='anvil'){if(inv.metal>=2){inv.metal-=2;inv.sword++;showFloat('⚒️ Меч wykuty!');}else showFloat('❌ Потрібно метал×2');return true;}
-  if(b.type==='well'){hunger=Math.min(100,hunger+20);playerHP=Math.min(maxHP,playerHP+10);showFloat('⛲ +10 HP');return true;}
-  if(b.type==='sofa'){playerHP=Math.min(maxHP,playerHP+15);showFloat('🛋️ +15 HP відпочинок');return true;}
+  if(b.type==='workbench'){showFloat('🔧 Верстак: відкрий інвентар для крафту');toggleInv();return true;}
+  if(b.type==='anvil'){if(inv.metal>=2){inv.metal-=2;inv.sword++;renderInv();showFloat('⚒️ Меч wykuty!');}else showFloat('❌ Потрібно метал×2');return true;}
+  if(b.type==='well'){hunger=Math.min(100,hunger+25);playerHP=Math.min(maxHP,playerHP+10);updHP();showFloat('⛲ +25 голод, +10 HP');return true;}
+  if(b.type==='sofa'){playerHP=Math.min(maxHP,playerHP+15);hunger=Math.min(100,hunger+5);updHP();showFloat('🛋️ +15 HP відпочинок');return true;}
+  if(b.type==='desk'){showFloat('📝 Письмовий стіл: +10% до крафту');return true;}
+  if(b.type==='bookshelf'){playerHP=Math.min(maxHP,playerHP+5);showFloat('📚 Бібліотека: +5 HP мудрості');return true;}
+  if(b.type==='barrel'){if(inv.wood>=2){inv.wood-=2;inv.coal+=2;renderInv();showFloat('🛢️ Бочка: +2 вугілля');}else showFloat('❌ Потрібно дерево×2');return true;}
+  if(b.type==='wardrobe'){hunger=Math.min(100,hunger+10);showFloat('👔 Шафа: +10 комфорту');return true;}
+  if(b.type==='chest'){openChest(b);return true;}
+  if(b.type==='furnace'){openFurnace(b);return true;}
+  if(b.type==='farm'){openFarm(b);return true;}
   return false;
+}
+
+// ══ CHEST SYSTEM ══
+let activeChest=null;
+const CHEST_SLOTS=['wood','stone','metal','fiber','coal','food','meat','axe','spear','sword'];
+function openChest(b){
+  if(!b.mesh.userData.storage)b.mesh.userData.storage={};
+  activeChest=b;
+  renderChestGrid();
+  document.getElementById('chestPop').style.display='flex';
+}
+function closeChest(){document.getElementById('chestPop').style.display='none';activeChest=null;}
+function renderChestGrid(){
+  if(!activeChest)return;
+  const s=activeChest.mesh.userData.storage||{};
+  const grid=document.getElementById('chestGrid');
+  grid.innerHTML='';
+  CHEST_SLOTS.forEach(k=>{
+    const v=s[k]||0;
+    const ico={wood:'🪵',stone:'🪨',metal:'⚙️',fiber:'🌿',coal:'🖤',food:'🍖',meat:'🥩',axe:'🪓',spear:'🗡️',sword:'⚔️'}[k]||k;
+    const el=document.createElement('div');
+    el.style.cssText='background:#ffffff10;border-radius:6px;padding:4px;text-align:center;font-size:9px;cursor:pointer;border:1px solid #fff2;';
+    el.innerHTML=`<div style="font-size:14px">${ico}</div><div style="color:#ffe082">${v}</div>`;
+    el.title=`Натисни щоб взяти ${k}`;
+    el.onclick=()=>{if(v>0){inv[k]=(inv[k]||0)+v;s[k]=0;renderInv();renderChestGrid();showFloat(`⬆️ +${v} ${ico}`);}};
+    grid.appendChild(el);
+  });
+}
+function chestDeposit(){
+  if(!activeChest)return;
+  const s=activeChest.mesh.userData.storage||{};
+  CHEST_SLOTS.forEach(k=>{if(inv[k]>0){s[k]=(s[k]||0)+inv[k];inv[k]=0;}});
+  activeChest.mesh.userData.storage=s;
+  renderInv();renderChestGrid();showFloat('⬇️ Все покладено в скриню');
+}
+function chestWithdraw(){
+  if(!activeChest)return;
+  const s=activeChest.mesh.userData.storage||{};
+  CHEST_SLOTS.forEach(k=>{if(s[k]>0){inv[k]=(inv[k]||0)+s[k];s[k]=0;}});
+  activeChest.mesh.userData.storage=s;
+  renderInv();renderChestGrid();showFloat('⬆️ Все забрано зі скрині');
+}
+
+// ══ FURNACE SYSTEM ══
+let activeFurnace=null;
+function openFurnace(b){activeFurnace=b;document.getElementById('furnaceStatus').textContent='';document.getElementById('furnacePop').style.display='flex';}
+function closeFurnace(){document.getElementById('furnacePop').style.display='none';activeFurnace=null;}
+function furnaceSmelt(inRes,outRes,inAmt,coalAmt,outAmt){
+  if(inv[inRes]<inAmt){showFloat(`❌ Потрібно ${inRes}×${inAmt}`);return;}
+  if(coalAmt>0&&inv.coal<coalAmt){showFloat(`❌ Потрібно вугілля×${coalAmt}`);return;}
+  inv[inRes]-=inAmt;
+  if(coalAmt>0)inv.coal-=coalAmt;
+  inv[outRes]=(inv[outRes]||0)+outAmt;
+  renderInv();
+  const ico={wood:'🪵',stone:'🪨',metal:'⚙️',fiber:'🌿',coal:'🖤',food:'🍖',meat:'🥩'}[outRes]||'✨';
+  document.getElementById('furnaceStatus').textContent=`✅ Отримано: ${ico}×${outAmt}`;
+  showFloat(`🏭 +${outAmt} ${ico}`);
+}
+
+// ══ FARM SYSTEM ══
+let activeFarm=null;
+function openFarm(b){
+  activeFarm=b;
+  if(!b.mesh.userData.farm)b.mesh.userData.farm={crop:null,plantedAt:0,ready:false};
+  renderFarmStatus();
+  document.getElementById('farmPop').style.display='flex';
+}
+function closeFarm(){document.getElementById('farmPop').style.display='none';activeFarm=null;}
+function renderFarmStatus(){
+  if(!activeFarm)return;
+  const f=activeFarm.mesh.userData.farm;
+  const el=document.getElementById('farmStatus');
+  const harvestBtn=document.getElementById('farmHarvestBtn');
+  if(!f.crop){el.textContent='Поле порожнє — посій щось';harvestBtn.disabled=true;harvestBtn.style.opacity='0.4';return;}
+  const elapsed=(Date.now()-f.plantedAt)/1000;
+  const growTime=f.crop==='wheat'?60:120; // seconds
+  if(elapsed>=growTime){
+    el.textContent='🌾 Врожай готовий до збору!';
+    harvestBtn.disabled=false;harvestBtn.style.opacity='1';
+  }else{
+    const pct=Math.floor(elapsed/growTime*100);
+    el.textContent=`🌱 Росте ${f.crop==='wheat'?'пшениця':'овочі'}... ${pct}%`;
+    harvestBtn.disabled=true;harvestBtn.style.opacity='0.4';
+    setTimeout(renderFarmStatus,3000);
+  }
+}
+function farmPlant(crop){
+  if(!activeFarm)return;
+  const f=activeFarm.mesh.userData.farm;
+  if(f.crop){showFloat('❌ Поле вже зайняте');return;}
+  const cost=crop==='wheat'?1:2;
+  if(inv.fiber<cost){showFloat(`❌ Потрібно fiber×${cost}`);return;}
+  inv.fiber-=cost;
+  f.crop=crop;f.plantedAt=Date.now();f.ready=false;
+  renderInv();renderFarmStatus();
+  // Visually grow the farm (change color)
+  activeFarm.mesh.traverse(c=>{if(c.isMesh)c.material.color?.setHex(0x2e7d32);});
+  showFloat('🌱 Посіяно! Повернись через '+(crop==='wheat'?'1':'2')+' хв');
+}
+function farmHarvest(){
+  if(!activeFarm)return;
+  const f=activeFarm.mesh.userData.farm;
+  const elapsed=(Date.now()-f.plantedAt)/1000;
+  const growTime=f.crop==='wheat'?60:120;
+  if(elapsed<growTime){showFloat('⏳ Ще не виросло!');return;}
+  if(f.crop==='wheat'){inv.food+=3;showFloat('🌾 Зібрано! +3 їжі');}
+  else{inv.food+=5;inv.fiber+=2;showFloat('🥕 Зібрано! +5 їжі, +2 fiber');}
+  f.crop=null;f.plantedAt=0;
+  renderInv();renderFarmStatus();
+  activeFarm.mesh.traverse(c=>{if(c.isMesh)c.material.color?.setHex(0x5a3010);});
 }
 
 function placeBuilding(){
@@ -1016,6 +1179,37 @@ function spawnBld(type,x,y,z,ry,extras={}){
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.06,2.2,6),matTex(TEX.metal)));
     const ln=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.25,0.2),new THREE.MeshStandardMaterial({color:0xf0e080,emissive:0xffdd00,emissiveIntensity:0.8,transparent:true,opacity:0.9}));ln.position.set(0.38,1.0,0);g.add(ln);
     const ll=new THREE.PointLight(0xffee88,1.0,8);ll.position.set(0.38,0.95,0);g.add(ll);fireLights.push({light:ll,base:1.0,mesh:ln,innerMesh:null});
+
+  }else if(type==='furnace'){
+    // Stone body with fire opening
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1,1.2,1),matTex(TEX.stone));g.add(body);
+    const opening=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.4,0.12),new THREE.MeshStandardMaterial({color:0xff4400,emissive:0xff2200,emissiveIntensity:1.5}));opening.position.set(0,-0.2,0.52);g.add(opening);
+    const chimney=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.15,0.5,6),matTex(TEX.stone));chimney.position.set(0,0.85,0);g.add(chimney);
+    const smoke=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshStandardMaterial({color:0x555,transparent:true,opacity:0.4}));smoke.position.set(0,1.2,0);g.add(smoke);
+    const fl2=new THREE.PointLight(0xff6600,0.8,3);fl2.position.set(0,0,0.4);g.add(fl2);fireLights.push({light:fl2,base:0.8,mesh:opening,innerMesh:null});
+
+  }else if(type==='farm'){
+    // Raised soil bed
+    const soil=new THREE.Mesh(new THREE.BoxGeometry(2,0.2,2),new THREE.MeshStandardMaterial({color:0x5a3010,roughness:1}));g.add(soil);
+    const border=new THREE.MeshStandardMaterial({color:0x4e342e,roughness:0.9});
+    [[2.05,0.25,0.15,0],[0.15,0.25,2.05,0],[2.05,0.25,0.15,1],[0.15,0.25,2.05,1]].forEach(([w,h,d,s])=>{
+      const b2=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),border);
+      b2.position.set(s===0?0:0,0,s===1?0:0);g.add(b2);
+    });
+    // Wooden frame
+    [[-0.95,0,0],[0.95,0,0],[0,-0,0.95],[0,0,-0.95]].forEach(([fx,,fz])=>{
+      const plank=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(fz)>0.1?0.1:2.1,0.3,Math.abs(fz)>0.1?2.1:0.1),matTex(TEX.wood));
+      plank.position.set(fx,0,fz);g.add(plank);
+    });
+
+  }else if(type==='bookshelf'){
+    const back=new THREE.Mesh(new THREE.BoxGeometry(1.2,2,0.08),matTex(TEX.wood));g.add(back);
+    const topP=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.06,0.28),matTex(TEX.wood));topP.position.set(0,0.97,0.12);g.add(topP);
+    const midP=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.06,0.28),matTex(TEX.wood));midP.position.set(0,0,0.12);g.add(midP);
+    const botP=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.06,0.28),matTex(TEX.wood));botP.position.set(0,-0.97,0.12);g.add(botP);
+    const bCols=[0x8b0000,0x00008b,0x006400,0x8b4513,0x4b0082];
+    for(let i=0;i<8;i++){const bk=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.35+Math.random()*0.25,0.22),new THREE.MeshStandardMaterial({color:bCols[i%bCols.length],roughness:0.9}));bk.position.set(-0.5+i*0.14,0.6,0.12);g.add(bk);}
+    for(let i=0;i<7;i++){const bk=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.3+Math.random()*0.2,0.22),new THREE.MeshStandardMaterial({color:bCols[(i+2)%bCols.length],roughness:0.9}));bk.position.set(-0.45+i*0.14,-0.37,0.12);g.add(bk);}
 
   }else{
     g.add(new THREE.Mesh(new THREE.BoxGeometry(def?def.w:1,def?def.h:1,def?def.d:1),new THREE.MeshStandardMaterial({color:0xbc8a5f,roughness:0.9})));
