@@ -401,36 +401,26 @@ async function fetchRooms(){
   return {...cache,..._local};
 }
 
-async function announceRoom(rid,nick,count,offline=false){
+async function announceRoom(rid,nick,count,offline=false,peerId=''){
   const now=Date.now();
-  const entry={nick,count,char:myChar,ts:now,offline};
+  const entry={nick,count,char:myChar,ts:now,offline,peerId:peerId||myId||''};
   _local[rid]=entry;
   if(BC)BC.postMessage({type:'ru',id:rid,entry});
-
-  // Save locally first (instant feedback)
   try{
     const cache=JSON.parse(localStorage.getItem('tf_rooms_cache')||'{}');
     cache[rid]=entry;
     Object.keys(cache).forEach(k=>{if(now-(cache[k].ts||0)>7*86400000)delete cache[k];});
     localStorage.setItem('tf_rooms_cache',JSON.stringify(cache));
   }catch(e){}
-
-  // Push to jsonbin (cross-device)
   try{
-    // First read current data, merge, then write back
     let current={};
     try{
       const r=await apiFetch(BIN+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
       if(r.ok){const d=await r.json();current=(d&&(d.rooms||d))||{};}
     }catch(e){}
     current[rid]=entry;
-    // Remove very old entries
     Object.keys(current).forEach(k=>{if(now-(current[k]?.ts||0)>7*86400000)delete current[k];});
-    await apiFetch(BIN,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},
-      body:JSON.stringify(current)
-    });
+    await apiFetch(BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(current)});
   }catch(e){console.log('jsonbin write failed:',e.message||e);}
 }
 
@@ -1963,29 +1953,32 @@ function setupConn(conn){
   });
 }
 
-function setupPeer(id,cb){
+function setupPeer(cb){
   if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  myPeer=new Peer(id);// No debug, no serialization override — use PeerJS defaults
+  myPeer=new Peer(); // Always let PeerJS assign a random ID — never force a specific one
+  const timeout=setTimeout(()=>{
+    setStatus('❌ PeerJS сервер не відповідає. Перевір інтернет.');
+    document.getElementById('createBtn').disabled=false;
+  },15000);
   myPeer.on('open',rid=>{
+    clearTimeout(timeout);
     myId=rid;
-    setStatus('✅ Твій ID: '+rid);
-    console.log('[PeerJS] Peer open, id=',rid);
+    console.log('[PeerJS] open, peerId=',rid);
     if(cb)cb(rid);
   });
   myPeer.on('connection',conn=>{
-    console.log('[PeerJS] Incoming connection from',conn.peer);
+    console.log('[PeerJS] incoming from',conn.peer);
     setupConn(conn);
   });
   myPeer.on('disconnected',()=>{
-    console.log('[PeerJS] Disconnected, reconnecting...');
+    console.log('[PeerJS] disconnected, reconnecting...');
     try{myPeer.reconnect();}catch(e){}
   });
   myPeer.on('error',err=>{
-    console.error('[PeerJS] Error:',err.type,err);
-    if(err.type==='unavailable-id'){
-      setupPeer('tf-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),cb);
-    }else if(err.type==='peer-unavailable'){
-      setStatus('❌ Кімната не знайдена або хост офлайн.');
+    clearTimeout(timeout);
+    console.error('[PeerJS] error:',err.type,err);
+    if(err.type==='peer-unavailable'){
+      setStatus('❌ Хост офлайн або ID не існує.');
       document.getElementById('createBtn').disabled=false;
       if(hostConn){try{hostConn.close();}catch(e){}hostConn=null;}
     }else{
@@ -2029,19 +2022,19 @@ function startAutoSave(id){if(window._worldSaveInt)clearInterval(window._worldSa
 
 function createRoom(){
   resetNet();
-  roomId='tf-'+Math.random().toString(36).slice(2,9);
+  roomId='tf-'+Math.random().toString(36).slice(2,9); // logical room ID (for world save)
   isHost=true;
-  setStatus('⏳ Створюємо кімнату...');
+  setStatus('⏳ Підключення до сервера...');
   document.getElementById('createBtn').disabled=true;
-  setupPeer(roomId,()=>{
-    // Show room ID prominently in lobby before entering game
+  setupPeer(peerId=>{
+    // peerId = what PeerJS gave us (random), roomId = our logical ID
     document.getElementById('lbStatus').innerHTML=
       '✅ Кімната: <b style="color:#ffe082">'+roomId+'</b> '+
       '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+roomId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
       'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
     saveRoom(roomId,myNick,true);
-    announceRoom(roomId,myNick,1,false);
-    announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false),15000);
+    announceRoom(roomId,myNick,1,false,peerId); // store peerId so clients can connect
+    announceInt=setInterval(()=>announceRoom(roomId,myNick,1+Object.keys(clientConns).length,false,peerId),15000);
     startAutoSave(roomId);
     startGame();
     loadInv(roomId);renderInv();
@@ -2070,120 +2063,94 @@ function joinRoom(id,hostNick){
   id=(id||'').trim().toLowerCase().replace(/\s+/g,'');
   if(!id){setStatus('❌ Введи ID кімнати');return;}
 
-  // If this is our own previously-created room — reopen as host
+  // Own room — reopen as host
   const savedRooms=getSaved();
   const isMyRoom=savedRooms.some(r=>r.id===id&&(r.own===true||(r.own===undefined&&r.nick===myNick)));
-  if(isMyRoom){
-    reopenMyRoom(id);
-    return;
-  }
+  if(isMyRoom){reopenMyRoom(id);return;}
 
   resetNet();
   roomId=id;
-  setStatus('🔗 Підключення до: '+id);
+  setStatus('🔍 Шукаємо кімнату '+id+'...');
   document.getElementById('createBtn').disabled=true;
   saveRoom(id,hostNick||'Хост');
-  const clientId='cl-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
-  setupPeer(clientId,()=>{
-    setStatus('⏳ Шукаємо хоста '+id+'...');
-    hostConn=myPeer.connect(id,{reliable:true});
-    let connected=false;
-    const timeout=setTimeout(()=>{
-      if(!connected){
-        setStatus('❌ Хост не відповідає. Перевір ID або чи хост онлайн.');
-        document.getElementById('createBtn').disabled=false;
-      }
-    },10000);
-    hostConn.on('open',()=>{
-      clearTimeout(timeout);
-      connected=true;
-      isHost=false;
-      setStatus('✅ Підключено до '+id+'!');
-      hostConn.send({type:'hello',nick:myNick,char:myChar});
-      loadInv(id);renderInv();
-      startAutoSave(id);
-      startGame();
-    });
-    hostConn.on('data',data=>{
-      handleMsg(hostConn.peer, typeof data==='string'?data:JSON.stringify(data));
-    });
-    hostConn.on('close',()=>{
-      addChat('🔌','Хост відключився — беремо управління...');
-      const savedRoomId=roomId;
-      setTimeout(()=>{if(!isHost)becomeHost(savedRoomId);},1000);
-    });
-    hostConn.on('error',e=>{
-      clearTimeout(timeout);
-      setStatus('❌ Помилка: '+(e.type||e));
+
+  // Look up the host's actual peer ID from JSONBin
+  fetchRooms().then(rooms=>{
+    const entry=rooms[id];
+    const peerId=entry&&entry.peerId;
+    if(!peerId){
+      setStatus('❌ Кімната не знайдена. Можливо хост офлайн.');
       document.getElementById('createBtn').disabled=false;
-    });
+      return;
+    }
+    doConnect(peerId);
+  }).catch(()=>{
+    setStatus('❌ Помилка мережі. Перевір інтернет.');
+    document.getElementById('createBtn').disabled=false;
   });
+
+  function doConnect(peerId){
+    setupPeer(myPeerId=>{
+      setStatus('⏳ Підключення до хоста...');
+      hostConn=myPeer.connect(peerId,{reliable:true});
+      let connected=false;
+      const timeout=setTimeout(()=>{
+        if(!connected){setStatus('❌ Хост не відповідає.');document.getElementById('createBtn').disabled=false;}
+      },12000);
+      hostConn.on('open',()=>{
+        clearTimeout(timeout);connected=true;isHost=false;
+        setStatus('✅ Підключено!');
+        hostConn.send({type:'hello',nick:myNick,char:myChar});
+        loadInv(id);renderInv();startAutoSave(id);startGame();
+      });
+      hostConn.on('data',data=>{handleMsg(hostConn.peer,typeof data==='string'?data:JSON.stringify(data));});
+      hostConn.on('close',()=>{
+        addChat('🔌','Хост відключився...');
+        const rid=roomId;setTimeout(()=>{if(!isHost)becomeHost(rid);},1000);
+      });
+      hostConn.on('error',e=>{
+        clearTimeout(timeout);
+        setStatus('❌ Помилка з\'єднання: '+(e.type||e));
+        document.getElementById('createBtn').disabled=false;
+      });
+    });
+  }
 }
 
 function reopenMyRoom(id){
   resetNet();
-  roomId=id;
-  isHost=true;
+  roomId=id;isHost=true;
   setStatus('⏳ Відкриваємо кімнату...');
   document.getElementById('createBtn').disabled=true;
-
-  function startAsHost(actualId){
-    roomId=actualId;
+  setupPeer(peerId=>{
     document.getElementById('lbStatus').innerHTML=
-      '✅ Кімната: <b style="color:#ffe082">'+actualId+'</b> '+
-      '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+actualId+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
+      '✅ Кімната: <b style="color:#ffe082">'+id+'</b> '+
+      '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+id+'\').then(()=>{this.textContent=\'✅\';setTimeout(()=>this.textContent=\'📋\',1500)})" '+
       'style="background:#388e3c;border:none;border-radius:4px;color:#fff;padding:1px 6px;font-size:10px;cursor:pointer">📋</button>';
-    saveRoom(actualId,myNick,true);
-    announceRoom(actualId,myNick,1,false);
-    announceInt=setInterval(()=>announceRoom(actualId,myNick,1+Object.keys(clientConns).length,false),15000);
-    startAutoSave(actualId);
-    startGame();
-    loadInv(actualId);renderInv();
-    showRoomIdBanner(actualId);
-    addChat('🏠','Кімната відновлена: '+actualId);
-    const world=loadWorld(id); // always load from original id
+    saveRoom(id,myNick,true);
+    announceRoom(id,myNick,1,false,peerId);
+    announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false,peerId),15000);
+    startAutoSave(id);startGame();loadInv(id);renderInv();
+    showRoomIdBanner(id);
+    addChat('🏠','Кімната відновлена: '+id);
+    const world=loadWorld(id);
     if(world&&world.buildings&&world.buildings.length){
       world.buildings.forEach(b=>spawnBld(b.t,b.x,b.y,b.z,b.r,{open:b.open,pin:b.pin||'',locked:b.locked||false}));
       showFloat('🏗️ Світ завантажено! ('+world.buildings.length+' будівель)');
     }
-  }
-
-  // Try to claim the original peer ID
-  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-  myPeer=new Peer(id);
-  myPeer.on('open',rid=>{myId=rid;startAsHost(rid);});
-  myPeer.on('connection',conn=>setupConn(conn));
-  myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
-  myPeer.on('error',err=>{
-    if(err.type==='unavailable-id'){
-      // Original ID taken — create new ID but keep world data from old ID
-      setStatus('⚠️ ID зайнятий, створюємо новий...');
-      if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
-      const newId='tf-'+Math.random().toString(36).slice(2,9);
-      myPeer=new Peer(newId);
-      myPeer.on('open',rid=>{myId=rid;startAsHost(rid);});
-      myPeer.on('connection',conn=>setupConn(conn));
-      myPeer.on('disconnected',()=>{try{myPeer.reconnect();}catch(e){}});
-      myPeer.on('error',e2=>setStatus('❌ '+e2.type));
-    }else{
-      setStatus('❌ '+err.type);
-      document.getElementById('createBtn').disabled=false;
-    }
   });
 }
+
 function becomeHost(id){
-  // Called when original host disconnects — take over the room
-  if(isHost)return; // already host
+  if(isHost)return;
   setStatus('👑 Стаєш хостом...');
-  const hadBuildings=[...placed]; // remember current buildings
-  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
   isHost=true;
-  // Take over the original room ID so others can still connect
-  setupPeer(id,()=>{
-    setStatus('👑 Ти новий хост! ID: '+id);
+  if(myPeer){try{myPeer.destroy();}catch(e){}myPeer=null;}
+  setupPeer(peerId=>{
+    setStatus('👑 Ти новий хост!');
     saveRoom(id,myNick,true);
-    announceRoom(id,myNick,1+Object.keys(clientConns).length,false);
-    announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false),15000);
+    announceRoom(id,myNick,1+Object.keys(clientConns).length,false,peerId);
+    announceInt=setInterval(()=>announceRoom(id,myNick,1+Object.keys(clientConns).length,false,peerId),15000);
     startAutoSave(id);
     showFloat('👑 Ти став хостом!');
     addChat('👑','Хост пішов. Ти тепер хост кімнати '+id);
