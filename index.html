@@ -806,25 +806,29 @@ const savedRooms=getSaved();
 const isMyRoom=savedRooms.some(r=>r.id===id&&r.own===true);
 if(isMyRoom){reopenMyRoom(id);return;}
 resetNet();
-roomId=id;
-setStatus('🔗 Підключення до: '+id);
-GI('createBtn').disabled=true;
+roomId=id;isHost=false;
 saveRoom(id,hostNick||'Хост');
+loadInv(id);renderInv();startAutoSave(id);
+startGame();
+setStatus('⏳ Підключення до '+id+'...');
+// Try PeerJS in background
+try{
 const clientId='cl-'+Date.now().toString(36)+'-'+MR().toString(36).slice(2,8);
-setupPeer(clientId,()=>{setStatus('⏳ Шукаємо хоста '+id+'...');
-hostConn=myPeer.connect(id,{reliable:true});
-let connected=false;
-const timeout=setTimeout(()=>{if(!connected){setStatus('❌ Хост не відповідає.');GI('createBtn').disabled=false;}},10000);
-hostConn.on('open',()=>{clearTimeout(timeout);connected=true;isHost=false;
-setStatus('✅ Підключено до '+id+'!');
-hostConn.send({type:'hello',nick:myNick,char:myChar});
-loadInv(id);renderInv();startAutoSave(id);startGame();});
+myId=clientId;
+const p=new Peer(clientId,{host:'0.peerjs.com',port:443,path:'/',secure:true,key:'peerjs',debug:0,
+config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]}});
+p.on('open',()=>{myPeer=p;
+hostConn=p.connect(id,{reliable:true});
+const timeout=setTimeout(()=>{addChat('⚠️','Хост не відповів через PeerJS');},8000);
+hostConn.on('open',()=>{clearTimeout(timeout);
+addChat('🔗','Підключено до хоста!');
+hostConn.send({type:'hello',nick:myNick,char:myChar});});
 hostConn.on('data',data=>{handleMsg(hostConn.peer,typeof data==='string'?data:JSON.stringify(data));});
-hostConn.on('close',()=>{addChat('🔌','Хост відключився...');
-const rid=roomId;setTimeout(()=>{if(!isHost)becomeHost(rid);},1000);});
-hostConn.on('error',e=>{clearTimeout(timeout);
-setStatus('❌ Помилка: '+(e.type||e));
-GI('createBtn').disabled=false;});});}
+hostConn.on('close',()=>{addChat('🔌','Хост відключився...');const rid=roomId;setTimeout(()=>{if(!isHost)becomeHost(rid);},1000);});
+hostConn.on('error',e=>{addChat('⚠️','PeerJS: '+(e.type||e));});});
+p.on('error',()=>{addChat('⚠️','Мережа недоступна — граєш локально');});
+}catch(e){addChat('⚠️','Мережа недоступна — граєш локально');}
+}
 function reopenMyRoom(id){resetNet();
 roomId=id;isHost=true;
 setStatus('⏳ Відкриваємо кімнату...');
