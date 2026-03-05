@@ -798,7 +798,7 @@ if(!banner){banner=document.createElement('div');
 banner.id='roomIdBanner';
 banner.style.cssText='position:absolute;top:48px;left:50%;transform:translateX(-50%);background:#1a2a1a;border:1px solid #81c784;border-radius:10px;padding:8px 14px;z-index:30;display:flex;gap:8px;align-items:center;font-size:12px;white-space:nowrap;';
 GI('game').appendChild(banner);}
-banner.innerHTML='🏠 ID кімнати: <b style="color:#ffe082;font-size:13px">'+rid+'</b> <button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+rid+'\')).then(()=>showFloat(\'📋 Скопійовано!\'))" style="background:#388e3c;border:none;border-radius:5px;color:#fff;padding:2px 8px;font-size:11px;cursor:pointer">📋 Копіювати</button><button onclick="document.getElementById(\'roomIdBanner\').remove()" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:14px">✕</button>';
+banner.innerHTML='🏠 ID: <b style="color:#ffe082">'+rid+'</b> <button onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+rid+'\').then(()=>showFloat(\'📋 Скопійовано!\'))" style="background:#388e3c;border:none;border-radius:5px;color:#fff;padding:2px 8px;font-size:11px;cursor:pointer">📋</button><button onclick="GI(\'roomIdBanner\').remove()" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:14px">✕</button>';
 banner.style.display='flex';}
 function joinRoom(id,hostNick){id=(id||'').trim().toLowerCase().replace(/\s+/g,'');
 if(!id){setStatus('❌ Введи ID кімнати');return;}
