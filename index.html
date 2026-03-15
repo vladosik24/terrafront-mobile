@@ -196,16 +196,22 @@ function toggleBuild(){buildMode=!buildMode;GI('buildTb').classList.toggle('on',
 function selBuild(t){selBldType=t;document.querySelectorAll('.bs').forEach(s=>s.classList.toggle('sel',s.dataset.b===t));}
 const RAY=new T.Raycaster(),CTR=new T.Vector2(0,0);
 function snapG(v,g){return Math.round(v/g)*g;}
-function getNearbyFloorY(gx,gz){let best=null,bestDist=999;
-for(const b of placed){if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;
-const def=BDEFS[b.type];
-const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
-const dx=gx-b.x,dz=gz-b.z;
-const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
-if(MA(lx)>def.w/2+0.7||MA(lz)>def.d/2+0.7)continue;
-const dist=MSQ(dx*dx+dz*dz);
-if(dist<bestDist){bestDist=dist;best=b.y+def.h/2;}}
-return best;}
+function getFloorAt(px, pz) {
+    for (const b of placed) {
+        if (b.type !== 'floor' && b.type !== 'floor_stone' && b.type !== 'platform') continue;
+        const def = BDEFS[b.type];
+        const cos = Math.cos(-b.ry);
+        const sin = Math.sin(-b.ry);
+        const dx = px - b.x;
+        const dz = pz - b.z;
+        const lx = cos * dx - sin * dz;
+        const lz = sin * dx + cos * dz;
+        if (Math.abs(lx) <= def.w / 2 + 0.1 && Math.abs(lz) <= def.d / 2 + 0.1) {
+            return b.y + def.h / 2; // top surface
+        }
+    }
+    return null;
+}
 function updateGhost(){const def=BDEFS[selBldType];if(!def)return;
 if(!ghostMesh||ghostMesh.userData.t!==selBldType){if(ghostMesh)scene.remove(ghostMesh);
 ghostMesh=new T.Mesh(new T.BoxGeometry(def.w,def.h,def.d),new T.MeshStandardMaterial({color:0x4fc3f7,transparent:true,opacity:0.45,depthWrite:false}));
@@ -238,49 +244,15 @@ const top=b.y+BDEFS[b.type].h/2;
 if(wallTopY===null||top>wallTopY)wallTopY=top;}
 const baseY=wallTopY!==null?wallTopY:gy+3;
 ghostMesh.position.set(gx,baseY+def.h/2,gz);}
-ghostMesh.rotation.y=0;}else if(selBldType==='wall'||selBldType==='wall_stone'||selBldType==='wall_wood'||selBldType==='wall_metal'||selBldType==='wall_door'||selBldType==='wall_window'){const candidates=[];
-candidates.push({baseY:gy,wx:gx,wz:gz});
-for(const b of placed){const isFloor=b.type==='floor'||b.type==='floor_stone'||b.type==='platform';
-if(!isFloor)continue;
-const bd=BDEFS[b.type];
-const dx=gx-b.x,dz=gz-b.z,d=MSQ(dx*dx+dz*dz);
-if(d>6)continue;
-const surfY=b.y+bd.h/2;
-const cos=Math.cos(-b.ry),sin=Math.sin(-b.ry);
-const lx=cos*dx-sin*dz,lz=sin*dx+cos*dz;
-const halfW=bd.w/2,halfD=bd.d/2;
-if(MA(lx)<=halfW+1.5&&MA(lz)<=halfD+1.5){const clampX=MX(-halfW,MN(halfW,lx));
-const clampZ=MX(-halfD,MN(halfD,lz));
-const wcos=Math.cos(b.ry),wsin=Math.sin(b.ry);
-const ex=b.x+wcos*clampX-wsin*clampZ;
-const ez=b.z+wsin*clampX+wcos*clampZ;
-candidates.push({baseY:surfY,wx:ex,wz:ez});}}
-for(const b of placed){const isSolidWall=b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal';
-if(!isSolidWall)continue;
-const bd=BDEFS[b.type];
-const dx=gx-b.x,dz=gz-b.z,d=MSQ(dx*dx+dz*dz);
-if(d>bd.w+0.8)continue;
-candidates.push({baseY:b.y+bd.h/2,wx:b.x,wz:b.z});}
-let best=candidates[0],bestDist=999;
-for(const c of candidates){const wallCenterY=c.baseY+def.h/2;
-const d=MA(wallCenterY-camera.position.y);
-if(d<bestDist){bestDist=d;best=c;}}
-ghostMesh.position.set(best.wx,best.baseY+def.h/2,best.wz);
-ghostMesh.rotation.y=snappedRy;}else if(selBldType==='platform'){const nearbyY=getNearbyFloorY(gx,gz);
-ghostMesh.position.set(gx,nearbyY!==null?nearbyY:gy+def.h/2,gz);
-ghostMesh.rotation.y=snappedRy;}else if(selBldType==='stairs'){const sd=BDEFS.stairs;
-let bestSurfY=-9999,found=false;
-for(const b of placed){if(b.type!=='floor'&&b.type!=='floor_stone'&&b.type!=='roof'&&b.type!=='platform')continue;
-const def2=BDEFS[b.type];
-const dx=px-b.x,dz=pz-b.z;
-if(MA(dx)>def2.w/2+1.5||MA(dz)>def2.d/2+1.5)continue;
-const surfY=b.y+def2.h/2;
-if(surfY>bestSurfY){bestSurfY=surfY;found=true;}}
-const baseY=found?bestSurfY:gy;
-ghostMesh.position.set(px,baseY+sd.h/2,pz);
-ghostMesh.rotation.y=yaw;}else{const nearbyY=getNearbyFloorY(gx,gz);
-const ob=nearbyY!==null?nearbyY:gy;
-ghostMesh.position.set(px,ob+def.h/2,pz);
+ghostMesh.rotation.y=0;}else if(selBldType==='wall'||selBldType==='wall_stone'||selBldType==='wall_wood'||selBldType==='wall_metal'||selBldType==='wall_door'||selBldType==='wall_window'){const floorY=getFloorAt(gx,gz);
+const targetY=floorY!==null?floorY+def.h/2:gy+def.h/2;
+ghostMesh.position.set(gx,targetY,gz);
+ghostMesh.rotation.y=snappedRy;}else if(selBldType==='platform'){const floorY=getFloorAt(gx,gz);
+ghostMesh.position.set(gx,floorY!==null?floorY:gy+def.h/2,gz);
+ghostMesh.rotation.y=snappedRy;}else if(selBldType==='stairs'){const floorY=getFloorAt(gx,gz);
+ghostMesh.position.set(gx,floorY!==null?floorY+def.h/2:gy+def.h/2,gz);
+ghostMesh.rotation.y=yaw;}else{const floorY=getFloorAt(px,pz);
+ghostMesh.position.set(px,floorY!==null?floorY+def.h/2:gy+def.h/2,pz);
 ghostMesh.rotation.y=snappedRy;}}
 function nearestBld(md=6){let best=null,bd=md;RAY.setFromCamera(CTR,camera);for(let i=0;i<placed.length;i++){if(!placed[i].mesh.parent)continue;const h=RAY.intersectObject(placed[i].mesh,true);if(h.length&&h[0].distance<bd){bd=h[0].distance;best=i;}}return best;}
 let lockPopCallback=null;
@@ -961,41 +933,8 @@ if(def2&&def2.snap){gx2=snapG(px2,def2.snap);gz2=snapG(pz2,def2.snap);}
 const snappedRy2=Math.round(yaw/(MPI/2))*(MPI/2);
 const gy2=getH(gx2,gz2);
 let targetY=gy2+def2.h/2;
-const isFloor2=(b.type==='floor'||b.type==='floor_stone');
-const isRoof2=(b.type==='roof');
-const isWall2=(b.type==='wall'||b.type==='wall_stone'||b.type==='wall_wood'||b.type==='wall_metal'||b.type==='wall_door'||b.type==='wall_window');
-if(isFloor2){const levels=new Set();
-levels.add(gy2+def2.h/2);
-for(const ob of placed){if(ob===b)continue;
-const isF=ob.type==='floor'||ob.type==='floor_stone';
-const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||b.type==='wall_window';
-const dx=gx2-ob.x,dz=gz2-ob.z,d=MSQ(dx*dx+dz*dz);
-if(isF&&d<BDEFS[ob.type].w*2.5)levels.add(ob.y);
-if(isW&&d<5)levels.add(ob.y+BDEFS[ob.type].h/2+def2.h/2);}
-let best=gy2+def2.h/2,bestDist=999;
-for(const ly of levels){const d=MA(ly-camera.position.y);if(d<bestDist){bestDist=d;best=ly;}}
-targetY=best;}else if(isRoof2){let bestY=null,bestDist=999;
-for(const ob of placed){if(ob===b)continue;
-const isW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal'||ob.type==='wall_door'||ob.type==='wall_window';
-if(!isW&&ob.type!=='roof')continue;
-const od=BDEFS[ob.type];
-const dx=gx2-ob.x,dz=gz2-ob.z,d=MSQ(dx*dx+dz*dz);
-if(d>6)continue;
-if(ob.type==='roof'){if(MA(ob.y-(bestY||ob.y))<0.5&&d<bestDist){bestY=ob.y+def2.h/2;bestDist=d;}}
-else{const topY=ob.y+od.h/2;if(bestY===null||topY>bestY){bestY=topY;bestDist=d;}}}
-targetY=(bestY!==null?bestY:gy2+3)+def2.h/2;}else if(isWall2){const cands=[gy2+def2.h/2];
-for(const ob of placed){if(ob===b)continue;
-const isF=ob.type==='floor'||ob.type==='floor_stone'||ob.type==='platform';
-const isSolidW=ob.type==='wall'||ob.type==='wall_stone'||ob.type==='wall_wood'||ob.type==='wall_metal';
-if(!isF&&!isSolidW)continue;
-const od=BDEFS[ob.type];
-const dx=gx2-ob.x,dz=gz2-ob.z,d=MSQ(dx*dx+dz*dz);
-const limit=isSolidW?od.w+0.8:6;
-if(d>limit)continue;
-cands.push(ob.y+od.h/2+def2.h/2);}
-let bestC=cands[0],bestD=999;
-for(const cy of cands){const d=MA(cy-camera.position.y);if(d<bestD){bestD=d;bestC=cy;}}
-targetY=bestC;}
+const floorY=getFloorAt(gx2,gz2);
+if(floorY!==null) targetY=floorY+def2.h/2;
 ghostMesh.position.set(gx2,targetY,gz2);
 ghostMesh.rotation.y=(def2&&def2.snap)?snappedRy2:yaw;}}else if(selBldType!=='__move'){updateGhost();}
 tHPEl.style.display='none';}
