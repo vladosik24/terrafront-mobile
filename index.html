@@ -6,6 +6,9 @@ const PN=performance.now.bind(performance);
 const RAF=requestAnimationFrame.bind(window);
 const T=THREE;
 const CL=console.log.bind(console),CW=console.warn.bind(console);
+function mat(color, roughness = 0.7) {
+    return new T.MeshStandardMaterial({ color, roughness });
+}
 function getSaved(){try{return JSON.parse(LSG('tf_rooms')||'[]');}catch(e){return[];}}
 function saveRoom(id,nick,isOwn=false){const r=getSaved().filter(x=>x.id!==id);r.unshift({id,nick,ts:Date.now(),own:isOwn});LSS('tf_rooms',JSON.stringify(r.slice(0,10)));}
 function delSaved(id){LSS('tf_rooms',JSON.stringify(getSaved().filter(r=>r.id!==id)));}
