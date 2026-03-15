@@ -937,7 +937,9 @@ const sw=Math.sin(legPh);
 const sw2=Math.sin(legPh*2);
 myMesh.children.forEach(c=>{if(c.name==='legL'){c.rotation.x = moving ? sw*0.55 : Math.sin(now*0.001)*0.02;
 if(c.userData.knee) c.userData.knee.rotation.x = moving ? MX(0,sw*0.45) : 0;} else if(c.name==='legR'){c.rotation.x = moving ? -sw*0.55 : Math.sin(now*0.001+0.5)*0.02;
-if(c.userData.knee) c.userData.knee.rotation.x = moving ? MX(0,-sw*0.45) : 0;}});
+if(c.userData.knee) c.userData.knee.rotation.x = moving ? MX(0,-sw*0.45) : 0;} else if(c.name==='armL'){c.rotation.x = moving ? sw*0.3 : Math.sin(now*0.001)*0.05;
+c.rotation.z = moving ? 0.1 : 0;} else if(c.name==='armR'){c.rotation.x = moving ? -sw*0.3 : Math.sin(now*0.001+0.5)*0.05;
+c.rotation.z = moving ? -0.1 : 0;}});
 if(moving){myMesh.position.y += MA(sw)*0.03;}
 if(!isOnGround){myMesh.children.forEach(c=>{if(c.name==='legL'){c.rotation.x=-0.25;if(c.userData.knee)c.userData.knee.rotation.x=0.5;}
 else if(c.name==='legR'){c.rotation.x=-0.25;if(c.userData.knee)c.userData.knee.rotation.x=0.5;}});}}    updHunger(dt*(typeof hungerMult==='function'?hungerMult():1));checkPickup();
@@ -1013,7 +1015,9 @@ rp._prevX=rp.x;rp._prevZ=rp.z;
 const rsw=Math.sin(rp._legPh);
 rp.mesh.children.forEach(c=>{if(c.name==='legL'){c.rotation.x=rpMoving?rsw*0.55:0;
 if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?MX(0,rsw*0.45):0;}else if(c.name==='legR'){c.rotation.x=rpMoving?-rsw*0.55:0;
-if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?MX(0,-rsw*0.45):0;}});
+if(c.userData.knee)c.userData.knee.rotation.x=rpMoving?MX(0,-rsw*0.45):0;}else if(c.name==='armL'){c.rotation.x=rpMoving?rsw*0.3:0;
+c.rotation.z=rpMoving?0.1:0;}else if(c.name==='armR'){c.rotation.x=rpMoving?-rsw*0.3:0;
+c.rotation.z=rpMoving?-0.1:0;}});
 const p3=new T.Vector3(rp.x,rp.y+1.5,rp.z);p3.project(camera);
 if(p3.z<1){rp.lbl.style.left=((p3.x*.5+.5)*innerWidth)+'px';rp.lbl.style.top=((-p3.y*.5+.5)*innerHeight)+'px';rp.lbl.style.display='block';}else rp.lbl.style.display='none';}
 renderer.render(scene,camera);}
